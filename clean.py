@@ -24,7 +24,6 @@ def bbands():
             initialInvestment = b.buy(51, float(bbands['Average'][i]))
 
     print(b.get_returns())
-    bbands.plot()
 
 
 # def vwap():
