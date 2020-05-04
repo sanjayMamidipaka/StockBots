@@ -18,12 +18,13 @@ def bbands():
     bbands['Average'] = average['close']
     for i in range(len(bbands.index)): 
         if (bbands['Real Upper Band'][i] - bbands['Average'][i] < 2): #sell
-            initialInvestment = b.sell(51, float(bbands['Average'][i]))
+            b.sell(50, float(bbands['Average'][i]), i)
 
-        elif (bbands['Average'][i] - bbands['Real Lower Band'][i] < 2): #buy
-            initialInvestment = b.buy(51, float(bbands['Average'][i]))
+        if (bbands['Average'][i] - bbands['Real Lower Band'][i] < 2): #buy
+            b.buy(50, float(bbands['Average'][i]), i)
 
     print(b.get_returns())
+    bbands.plot()
 
 
 # def vwap():
