@@ -3,7 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 
-initialInvestment = 10000.0
+initialInvestment = 110000.0
 sellx = []
 selly = []
 
@@ -24,21 +24,21 @@ def bbands(initialInvestment):
     b = backtester.Backtester(initialInvestment, bbands)
     for i in range(len(bbands.index)): 
         if (bbands['Real Upper Band'][i] - bbands['Average'][i] < 2): #sell
-            boolean = b.sell(5, float(bbands['Average'][i]), i)
+            boolean = b.sell(57, float(bbands['Average'][i]), i)
             
             if boolean:
                 sellx.append(bbands.index[i])
                 selly.append(bbands['Average'][i])
 
         if (bbands['Average'][i] - bbands['Real Lower Band'][i] < 2): #buy
-            boolean = b.buy(5, float(bbands['Average'][i]), i)
+            boolean = b.buy(57, float(bbands['Average'][i]), i)
 
             if boolean:
                 buyx.append(bbands.index[i])
                 buyy.append(bbands['Average'][i])
 
     print(b.get_returns())
-    bbands.plot()
+    bbands.plot(figsize=(20,8))
 
 
 def vwap(initialInvestment):
@@ -54,14 +54,14 @@ def vwap(initialInvestment):
     vwap.plot(figsize=(20,4))
     for i in range(len(vwap.index)): 
         if (vwap['vwap'][i] - vwap['Average'][i] < 0.1): #sell
-            boolean = initialInvestment = b.sell(5, float(vwap['Average'][i]), i) # returns true if atrade was actually executed
+            boolean = initialInvestment = b.sell(2, float(vwap['Average'][i]), i) # returns true if atrade was actually executed
 
             if boolean: # if a trade was executed, plot it
                 sellx.append(vwap.index[i])
                 selly.append(vwap['Average'][i])
 
         elif (vwap['Average'][i] - vwap['vwap'][i] < 0.1): #buy
-            boolean = b.buy(5, float(vwap['Average'][i]), i)
+            boolean = b.buy(2, float(vwap['Average'][i]), i)
 
             if boolean:
                 buyx.append(vwap.index[i])
