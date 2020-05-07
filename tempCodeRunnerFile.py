@@ -1,2 +1,1 @@
-    allx.append(initial.index[i])
-    ally.append(initial['close'][i])
+b.get_current_buys()

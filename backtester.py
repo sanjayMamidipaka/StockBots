@@ -17,7 +17,7 @@ class Backtester(object):
         if self.buys - self.sells >= 1 and self.buys > 0: #checks to make sure that you have bought something and that you currently have more buys than sells
             self.initialInvestment += (shares * price)
             self.sells += shares
-            self.buys -= shares
+            self.buys  = 0
             print(self.indicator.index[i], self.indicator['close'][i], 'SELL', str(shares))
             return True
         return False
@@ -25,7 +25,7 @@ class Backtester(object):
     def buy(self, shares, price, i):
         if (not (price*shares > self.initialInvestment)):
             self.buys += shares
-            self.sells -= shares
+            self.sells  = 0
             self.initialInvestment -= (shares * price)
             print(self.indicator.index[i], self.indicator['close'][i], 'BUY', str(shares))
             return True
