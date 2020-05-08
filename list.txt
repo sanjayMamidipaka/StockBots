@@ -1,0 +1,6 @@
+most profitable with rsi:
+    sbux
+    amd
+    nvda
+    aapl
+    intc
