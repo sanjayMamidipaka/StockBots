@@ -9,7 +9,7 @@ from web_scraper import scrape
 
 
 
-# url = 'https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY'
+# url = 'https://www.alphavantage.co/query?function=TIME_SERIES_DAILY'
 # r = '{}&symbol={}&interval={}&apikey={}&datatype={}&outputsize={}'.format(url, 'msft', '1min','9YM6MWUWHMZN05MB', 'csv','full')
 
 # initial = pd.read_csv(r, index_col='timestamp', parse_dates=True)
@@ -18,7 +18,7 @@ from web_scraper import scrape
 
 rowlist = []
 init = 0
-final = 100
+final = 10
 while init < final:
     rowlist.append(scrape())
 
