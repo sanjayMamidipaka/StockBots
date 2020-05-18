@@ -25,7 +25,7 @@ def create_order(symbol, qty, side, type, time_in_force):
         time_in_force=time_in_force
 )
 
-
+stoploss =  185.65 + 0.2
 
 
 def scrape(df):
@@ -56,7 +56,7 @@ def scrape(df):
             if b.buy(math.floor(initialInvestment/initial['close'][i]), initial['close'][i], i):
                 print(create_order('MSFT', 20, 'buy', 'market', 'gtc'))
 
-        elif (stock['rsi_6'][i] > 70 and initial['bband2'][i] - initial['close'][i] < 0.1): #sell
+        elif ((stock['rsi_6'][i] > 70 and initial['bband2'][i] - initial['close'][i] < 0.1) or float(f) == stoploss): #sell
             if b.sell(b.get_current_buys(), initial['close'][i], i):
                 print(create_order('MSFT', 20, 'sell', 'market', 'day'))
         else:
