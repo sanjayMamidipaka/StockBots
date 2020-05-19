@@ -1,1 +1,1 @@
-https://finance.yahoo.com/quote/MSFT?p=MSFT&.tsrc=fin-srch
+30
