@@ -25,10 +25,15 @@ def create_order(symbol, qty, side, type, time_in_force):
         time_in_force=time_in_force
 )
 
-stopprofit = 54.59 + 0.2
+def get_price():
+    r = requests.get('https://finance.yahoo.com/quote/AMD?p=AMD&.tsrc=fin-srch')
+    soup = bs4.BeautifulSoup(r.text, 'lxml')
+    f = soup.find('div',{'class': 'My(6px) Pos(r) smartphone_Mt(6px)'}).find('span').text
+    return float(f)
 
 
-def scrape(df):
+
+def scrape(df, stopprofit, stoploss):
     try:
         count = 0
         now = datetime.now()
@@ -56,11 +61,14 @@ def scrape(df):
             if b.buy(math.floor(initialInvestment/initial['close'][i]), initial['close'][i], i):
                 print(create_order('AMD', 9, 'buy', 'market', 'gtc'))
 
-        elif ((stock['rsi_6'][i] > 60 and initial['bband2'][i] - initial['close'][i] < 0.1) or float(f) == stopprofit): #sell
+        elif ((stock['rsi_6'][i] > 60 and initial['bband2'][i] - initial['close'][i] < 0.1) or float(f) >= stopprofit or float(f) <= stoploss): #sell
             if b.sell(b.get_current_buys(), initial['close'][i], i):
                 print(create_order('AMD', 9, 'sell', 'market', 'day'))
         else:
             print('no trade executed')
+
+        stopprofit = get_price() + 0.2
+        stoploss = get_price() - 0.5
     except:
         print('Error!')
 
@@ -71,8 +79,10 @@ def scrape(df):
 
 total = []
 initialInvestment = 500.0
+stopprofit = get_price() + 0.2
+stoploss = get_price() - 0.2
 b = backtester.Backtester(initialInvestment)
 df = pd.DataFrame()
 for i in range(100000):
-    time.sleep(60)
-    scrape(df)
+    time.sleep(20)
+    scrape(df, stopprofit, stoploss)
