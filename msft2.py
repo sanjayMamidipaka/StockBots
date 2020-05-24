@@ -8,6 +8,7 @@ import pandas as pd
 import json, time, math, backtester
 from stockstats import StockDataFrame
 import alpaca_trade_api as tradeapi
+import tulipy as ti, numpy as np
 
 def create_order(symbol, qty, side, type, time_in_force):
     api.submit_order(
@@ -32,10 +33,8 @@ stopprofit = 0
 stoploss = 0
 b = backtester.Backtester(initialInvestment)
 df = pd.DataFrame()
-counter = 0
 
 for i in range(100000):
-    count = 0
     now = datetime.now()
     # dd/mm/YY H:M:S
     dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
@@ -50,41 +49,41 @@ for i in range(100000):
     # dd/mm/YY H:M:S
     dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
 
-    count += 1
     dict1 = {'Time': dt_string, 'close': float(f)}
     print(dict1)
     total.append(dict1)
     initial = pd.DataFrame(total)
+    bband1 = ti.bbands(np.array(initial['open']), 26, 2)[0]
+    bband2 = ti.bbands(np.array(initial['open']), 26, 2)[2]
+    rsi_26 = ti.rsi(np.array(initial['open']),26)
+    bbands = pd.concat([pd.DataFrame(bband1),pd.DataFrame(bband2),pd.DataFrame(rsi_26)], axis=1)
+    initial = pd.concat([initial, bbands], axis = 1)
+    initial = initial.iloc[::-1]
+    initial.columns = ['Time', 'close', 'bband1', 'bband2', 'rsi']
 
-    if counter >= 12:
-        stock = StockDataFrame.retype(initial)
-        initial['bband1'] = stock['boll_lb']
-        initial['bband2'] = stock['boll_ub']
-        initial['rsi'] = stock['rsi_26']
+    one = int(initial['open'].ewm(span=50).mean()[i] > initial['open'].ewm(span=200).mean()[i])
+    two = int(initial['rsi_26'][i] <= 30)
+    three = int(initial['open'][i] - initial['bband1'][1] <= 0.01)
+    total = one + two + three
 
-        one = int(initial['open'].ewm(span=12).mean()[i] > initial['open'].ewm(span=26).mean()[i])
-        two = int(initial['rsi_26'][i] <= 30)
-        three = int(initial['open'][i] - initial['bband1'][1] <= 0.01)
-        total = one + two + three
+    newOne = int(initial['open'].ewm(span=50).mean()[i] < initial['open'].ewm(span=200).mean()[i])
+    newTwo = int(initial['rsi'][i] >= 70)
+    newThree = int(initial['bband1'][1] - initial['open'][i] <= 0.01)
+    newTotal = newOne + newTwo + newThree
+                    
+    if (total >= 2): #buy
+        if b.buy(math.floor(float(initialInvestment)/float(initial['open'][i])), float(initial['open'][i]), i):
+            pass
 
-        newOne = int(initial['open'].ewm(span=12).mean()[i] < initial['open'].ewm(span=26).mean()[i])
-        newTwo = int(initial['rsi'][i] >= 70)
-        newThree = int(initial['bband1'][1] - initial['open'][i] <= 0.01)
-        newTotal = newOne + newTwo + newThree
-                        
-        if (total >= 2): #buy
-            if b.buy(math.floor(float(initialInvestment)/float(initial['open'][i])), float(initial['open'][i]), i):
-                pass
+    elif (newTotal >= 2 or initial['open'][i] <= stoploss or initial['open'][i] >= stopprofit): #sell
+        if b.sell(b.get_current_buys(), initial['close'][i], i):
+            pass
+    else:
+        print('no trade executed')
 
-        elif (newTotal >= 2 or initial['open'][i] <= stoploss or initial['open'][i] >= stopprofit): #sell
-            if b.sell(b.get_current_buys(), initial['close'][i], i):
-                pass
-        else:
-            print('no trade executed')
-
-        stopprofit = float(initial['close'][i]) * (1 + 0.01)
-        stoploss = float(initial['close'][i]) * (1 + 0.01)
-        time.sleep(60)
+    stopprofit = float(initial['close'][i]) * (1 + 0.01)
+    stoploss = float(initial['close'][i]) * (1 + 0.01)
+    time.sleep(60)
 
                 
         
