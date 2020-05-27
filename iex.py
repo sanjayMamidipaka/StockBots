@@ -21,7 +21,7 @@ stopprofit = float(initial['open'][0]) * (1+0.01)
 stoploss = float(initial['open'][0]) * (1-0.01)
 
 b = backtester.Backtester(initialInvestment)
-for i in range(1,len(initial.index)):
+for i in range(len(initial.index)-200):
     try:
         one = int(initial2['open'].ewm(span=12).mean()[i] >= initial2['open'].ewm(span=26).mean()[i]) #ema
         two = int(initial2['rsi'][i] <= 30) # rsi
@@ -38,10 +38,11 @@ for i in range(1,len(initial.index)):
         if (total >= 2): #buy
             if b.buy(math.floor(float(initialInvestment)/float(initial['open'][i])), float(initial['open'][i]), i):
                 numTrades += 1
+                print(initial['timestamp'][i])
 
         elif (newTotal >= 2 or initial['open'][i] <= stoploss or initial['open'][i] >= stopprofit): #sell
             if b.sell(b.get_current_buys(), initial['close'][i], i):
-                pass
+                print(initial['timestamp'][i])
 
         stopprofit = float(initial['open'][i-1]) * (1+0.01)
         stoploss = float(initial['open'][i-1]) * (1-0.01)
