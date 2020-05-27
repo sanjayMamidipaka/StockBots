@@ -15,6 +15,7 @@ ema_200 = ti.ema(np.array(initial['open']), 200)
 bbands = pd.concat([pd.DataFrame(bband1),pd.DataFrame(bband2),pd.DataFrame(rsi_26), pd.DataFrame(ema_50), pd.DataFrame(ema_200)], axis=1)
 initial = pd.concat([initial, bbands], axis = 1)
 initial.columns = ['timestamp', 'open', 'high', 'low', 'close', 'volume', 'bband1', 'bband2', 'rsi', 'ema1', 'ema2']
+initial.drop(['high','low','close','volume'], axis=1, inplace=True)
 
 initialInvestment = 1000.0
 stopprofit = float(initial['open'][0]) * (1+0.01)
@@ -42,7 +43,7 @@ for i in range(len(initial.index)-200,1,-1):
             numTrades += 1
 
     elif (newTotal >= 2 ): #sell
-        if b.sell(b.get_current_buys(), initial['close'][i], i):
+        if b.sell(b.get_current_buys(), initial['open'][i], i):
             pass
 
     
@@ -50,7 +51,7 @@ for i in range(len(initial.index)-200,1,-1):
 
 
 i = len(initial.index)-1
-if b.sell(b.get_current_buys(), initial['close'][i], i): #sell everything once the day is done
+if b.sell(b.get_current_buys(), initial['open'][i], i): #sell everything once the day is done
     pass
 
 
