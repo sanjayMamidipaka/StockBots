@@ -28,10 +28,9 @@ account = api.get_account()
 initialInvestment = 1000.0
 stopprofit = 0
 stoploss = 0
+max = 20
 b = backtester.Backtester(initialInvestment)
-original = pd.read_csv('https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&interval=1min&symbol=msft&apikey=OUMVBY0VK0HS8I9E&datatype=csv&outputsize=full')
-original.drop(['high','low','close','volume'], axis=1, inplace=True)
-original = original[0:150]
+final = []
 
 for i in range(100000):
     now = datetime.now()
@@ -41,40 +40,42 @@ for i in range(100000):
     r = requests.get('https://finance.yahoo.com/quote/MSFT?p=MSFT&.tsrc=fin-srch')
     soup = bs4.BeautifulSoup(r.text, 'lxml')
     f = soup.find('div',{'class': 'My(6px) Pos(r) smartphone_Mt(6px)'}).find('span').text
-    original.iloc[0] = [dtstring, float(f)]
-    initial = pd.DataFrame(original) #create a new dataframe to use
-    try:
-        bband1 = ti.bbands(np.array(initial['open']), 50, 2)[0]
-        bband2 = ti.bbands(np.array(initial['open']), 200, 2)[2]
-        rsi_26 = ti.rsi(np.array(initial['open']), 26)
-        ema_50 = ti.ema(np.array(initial['open']), 50)
-        ema_200 = ti.ema(np.array(initial['open']), 200)
-        bbands = pd.concat([pd.DataFrame(bband1),pd.DataFrame(bband2),pd.DataFrame(rsi_26), pd.DataFrame(ema_50), pd.DataFrame(ema_200)], axis=1)
-        initial = pd.concat([initial, bbands], axis = 1)
-        initial.columns = ['Time', 'open', 'bband1', 'bband2', 'rsi', 'ema1','ema2']
+    if i < max:
+        final.append({'timestamp': dtstring, 'open': float(f), 'bband1': 0.0, 'bband2': 0.0, 'rsi': 0.0, 'ema1': 0.0, 'ema2': 0.0})
+        initial = pd.DataFrame(final)
+    else:
+
+        bband1 = ti.bbands(np.array(initial['open']), 20, 2)[0][-1]
+        bband2 = ti.bbands(np.array(initial['open']), 20, 2)[2][-1]
+        rsi_26 = ti.rsi(np.array(initial['open']), 13)[-1]
+        ema_50 = ti.ema(np.array(initial['open']), 5)[-1]
+        ema_200 = ti.ema(np.array(initial['open']), 20)[-1]
+
+        final.append({'timestamp': dtstring, 'open': float(f), 'bband1': bband1, 'bband2': bband2, 'rsi': rsi_26, 'ema1': ema_50, 'ema2': ema_200})
+        initial = pd.DataFrame(final)
+
+        initial.columns = ['timestamp', 'open', 'bband1', 'bband2', 'rsi', 'ema1','ema2']
+        print(initial.tail())
         one = int(initial['ema1'][i] >= initial['ema2'][i]) #ema
-        two = int(initial['rsi'][i] <= 30)
-        three = int(initial['open'][i] - initial['bband1'][1] <= 0.01)
+        two = int(initial['rsi'][i] <= 45)
+        three = int(initial['open'][i] - initial['bband1'][i] <= 0.01)
         total = one + two + three
 
         newOne = int(initial['ema1'][i] >= initial['ema2'][i])
-        newTwo = int(initial['rsi'][i] >= 70)
-        newThree = int(initial['bband1'][1] - initial['open'][i] <= 0.01)
+        newTwo = int(initial['rsi'][i] >= 90)
+        newThree = int(initial['bband1'][i] - initial['open'][i] <= 0.01)
         newTotal = newOne + newTwo + newThree
                         
         if (total >= 2): #buy
-            if b.buy(4, float(initial['open'][i]), i):
-                pass
-                #print(create_order('MSFT', 4, 'buy', 'market', 'gtc'))
+            if b.buy(4, float(initial['open'][i]), 0):
+                print(create_order('MSFT', 5, 'buy', 'market', 'gtc'))
 
         elif (newTotal >= 2): #sell
-            if b.sell(4, initial['open'][i], i):
-                pass
-                #print(create_order('MSFT', 4, 'sell', 'market', 'day'))
+            if b.sell(4, initial['open'][i], 0):
+                print(create_order('MSFT', 5, 'sell', 'market', 'day'))
         else:
             print('no trade executed')
-    except Exception as e:
-        print(e)
+
     time.sleep(15)
 
                 

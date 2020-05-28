@@ -7,15 +7,19 @@ import tulipy as ti
 final = 0.0
 numTrades = 0
 initial = pd.read_csv('https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&interval=1min&symbol=msft&apikey=OUMVBY0VK0HS8I9E&datatype=csv&outputsize=full')
-bband1 = ti.bbands(np.array(initial['open']), 50, 2)[0]
+bband1 = ti.bbands(np.array(initial['open']), 200, 2)[0]
 bband2 = ti.bbands(np.array(initial['open']), 200, 2)[2]
-rsi_26 = ti.rsi(np.array(initial['open']), 26)
+rsi_26 = ti.rsi(np.array(initial['open']), 12)
 ema_50 = ti.ema(np.array(initial['open']), 50)
 ema_200 = ti.ema(np.array(initial['open']), 200)
 bbands = pd.concat([pd.DataFrame(bband1),pd.DataFrame(bband2),pd.DataFrame(rsi_26), pd.DataFrame(ema_50), pd.DataFrame(ema_200)], axis=1)
 initial = pd.concat([initial, bbands], axis = 1)
 initial.columns = ['timestamp', 'open', 'high', 'low', 'close', 'volume', 'bband1', 'bband2', 'rsi', 'ema1', 'ema2']
 initial.drop(['high','low','close','volume'], axis=1, inplace=True)
+sellx = []
+selly = []
+buyx = []
+buyy = []
 
 initialInvestment = 1000.0
 stopprofit = float(initial['open'][0]) * (1+0.01)
@@ -23,16 +27,13 @@ stoploss = float(initial['open'][0]) * (1-0.01)
 
 b = backtester.Backtester(initialInvestment)
 for i in range(len(initial.index)-200,1,-1):
-    dict1 = {'Time': initial['timestamp'][i], 'open': initial['open'][i]}
-    total = []
-    total.append(dict1)
-    one = int(initial['ema1'][i] > initial['ema2'][i]) #ema
-    two = int(initial['rsi'][i] <= 30) # rsi
+    one = int(initial['ema1'][i] >= initial['ema2'][i]) #ema
+    two = int(initial['rsi'][i] <= 45) # rsi
     three = int(initial['open'][i] - initial['bband1'][i] <= 0.01) #bollinger bands
     total = one + two + three
 
-    newOne = int(initial['ema1'][i] > initial['ema2'][i])
-    newTwo = int(initial['rsi'][i] >= 70)
+    newOne = int(initial['ema1'][i] >= initial['ema2'][i])
+    newTwo = int(initial['rsi'][i] >= 90)
     newThree = int(initial['bband1'][i] - initial['open'][i] <= 0.01)
     newTotal = newOne + newTwo + newThree
 
@@ -41,10 +42,13 @@ for i in range(len(initial.index)-200,1,-1):
     if (total >= 2): #buy
         if b.buy(math.floor(float(initialInvestment)/float(initial['open'][i])), float(initial['open'][i]), i):
             numTrades += 1
+            buyx.append(i)
+            buyy.append(initial['open'][i])
 
     elif (newTotal >= 2 ): #sell
         if b.sell(b.get_current_buys(), initial['open'][i], i):
-            pass
+            sellx.append(i)
+            selly.append(initial['open'][i])
 
     
 
@@ -56,9 +60,10 @@ if b.sell(b.get_current_buys(), initial['open'][i], i): #sell everything once th
 
 
 
-#plt.scatter(sellx, selly,c='red', label='sell')
-#plt.scatter(buyx, buyy,c='green', label='buy')
-#plt.legend()
+initial['open'].plot()
+plt.scatter(sellx, selly,c='red', label='sell')
+plt.scatter(buyx, buyy,c='green', label='buy')
+plt.legend()
 print(b.get_returns())
 print('Number of buy-sell pairs:', numTrades)
-#plt.show()
+plt.show()
