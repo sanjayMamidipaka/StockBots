@@ -7,9 +7,8 @@ import tulipy as ti
 final = 0.0
 numTrades = 0
 initial = pd.read_csv('https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&interval=1min&symbol=msft&apikey=OUMVBY0VK0HS8I9E&datatype=csv&outputsize=full')
-initial = initial[0:390]
-bband1 = ti.bbands(np.array(initial['open']), 200, 2)[0]
-bband2 = ti.bbands(np.array(initial['open']), 200, 2)[2]
+bband1 = ti.bbands(np.array(initial['open']), 50, 2)[0]
+bband2 = ti.bbands(np.array(initial['open']), 50, 2)[2]
 rsi_26 = ti.rsi(np.array(initial['open']), 26)
 ema_50 = ti.ema(np.array(initial['open']), 50)
 ema_200 = ti.ema(np.array(initial['open']), 200)
@@ -22,19 +21,19 @@ selly = []
 buyx = []
 buyy = []
 
-initialInvestment = 1000.0
+initialInvestment = 100000.0
 stopprofit = float(initial['open'][0]) * (1+0.01)
 stoploss = float(initial['open'][0]) * (1-0.01)
 
 b = backtester.Backtester(initialInvestment)
 for i in range(len(initial.index)-200,1,-1):
     one = int(initial['ema1'][i] >= initial['ema2'][i]) #ema
-    two = int(initial['rsi'][i] <= 30) # rsi
+    two = int(initial['rsi'][i] <= 45) # rsi
     three = int(initial['open'][i] - initial['bband1'][i] <= 0.01) #bollinger bands
     total = one + two + three
 
-    newOne = int(initial['ema1'][i] <= initial['ema2'][i])
-    newTwo = int(initial['rsi'][i] >= 70)
+    newOne = int(initial['ema1'][i] >= initial['ema2'][i])
+    newTwo = int(initial['rsi'][i] >= 90)
     newThree = int(initial['bband1'][i] - initial['open'][i] <= 0.01)
     newTotal = newOne + newTwo + newThree
 
@@ -52,8 +51,8 @@ for i in range(len(initial.index)-200,1,-1):
             # sellx.append(i)
             # selly.append(initial['open'][i])
 
-    stopprofit = float(initial['open'][0]) * (1+0.005)
-    stoploss = float(initial['open'][0]) * (1-0.005)
+    stopprofit = float(initial['open'][0]) * (1+0.01)
+    stoploss = float(initial['open'][0]) * (1-0.01)
 
     
 

@@ -31,57 +31,57 @@ stoploss = 0
 max = 200
 b = backtester.Backtester(initialInvestment)
 final = []
+initial = pd.DataFrame()
 
 for i in range(100000):
-    print(i)
-    now = datetime.now()
-    # dd/mm/YY H:M:S
-    dtstring = now.strftime("%Y-%m-%d %H:%M:%S")
-    f = ''
-    r = requests.get('https://finance.yahoo.com/quote/MSFT?p=MSFT&.tsrc=fin-srch')
-    soup = bs4.BeautifulSoup(r.text, 'lxml')
-    f = soup.find('div',{'class': 'My(6px) Pos(r) smartphone_Mt(6px)'}).find('span').text
-    if i <= max:
-        final.append({'timestamp': dtstring, 'open': float(f), 'bband1': 0.0, 'bband2': 0.0, 'rsi': 0.0, 'ema1': 0.0, 'ema2': 0.0})
-        time.sleep(30)
-    else:
-
-        bband1 = ti.bbands(np.array(initial['open']), 200, 2)[0][-1]
-        bband2 = ti.bbands(np.array(initial['open']), 200, 2)[2][-1]
-        rsi_26 = ti.rsi(np.array(initial['open']), 26)[-1]
-        ema_50 = ti.ema(np.array(initial['open']), 50)[-1]
-        ema_200 = ti.ema(np.array(initial['open']), 200)[-1]
-
-        final.append({'timestamp': dtstring, 'open': float(f), 'bband1': bband1, 'bband2': bband2, 'rsi': rsi_26, 'ema1': ema_50, 'ema2': ema_200})
-        initial = pd.DataFrame(final)
-
-        initial.columns = ['timestamp', 'open', 'bband1', 'bband2', 'rsi', 'ema1','ema2']
-        print(initial.tail())
-        one = int(initial['ema1'][i] >= initial['ema2'][i]) #ema
-        two = int(initial['rsi'][i] <= 30) #rsi
-        three = int(initial['open'][i] - initial['bband1'][i] <= 0.01) #bbands
-        total = one + two + three
-
-        newOne = int(initial['ema1'][i] <= initial['ema2'][i]) #ema
-        newTwo = int(initial['rsi'][i] >= 70) #rsi
-        newThree = int(initial['bband1'][i] - initial['open'][i] <= 0.01) # bbands
-        newTotal = newOne + newTwo + newThree
-                        
-        if (total >= 2): #buy
-            if b.buy(5, float(initial['open'][i]), 0):
-                print(create_order('MSFT', 5, 'buy', 'market', 'gtc'))
-
-        elif (newTotal >= 2 or initial['open'][i] >= stopprofit or initial['open'][i] < stoploss): #sell
-            if b.sell(5, initial['open'][i], 0):
-                print(create_order('MSFT', 5, 'sell', 'market', 'day'))
+    try:
+        now = datetime.now()
+        # dd/mm/YY H:M:S
+        dtstring = now.strftime("%Y-%m-%d %H:%M:%S")
+        f = ''
+        r = requests.get('https://finance.yahoo.com/quote/MSFT?p=MSFT&.tsrc=fin-srch')
+        soup = bs4.BeautifulSoup(r.text, 'lxml')
+        f = soup.find('div',{'class': 'My(6px) Pos(r) smartphone_Mt(6px)'}).find('span').text
+        if i <= max:
+            final.append({'timestamp': dtstring, 'open': float(f), 'bband1': 0.0, 'bband2': 0.0, 'rsi': 0.0, 'ema1': 0.0, 'ema2': 0.0})
+            initial = pd.DataFrame(final)
+            print(initial.tail())
+            time.sleep(30)
         else:
-            print('no trade executed')
-        time.sleep(60)
-    
-    stopprofit = initial['open'][i] * 1 + (0.005)
-    stoploss = initial['open'][i] * 1 - (0.005)
+            bband1 = ti.bbands(np.array(initial['open']), 50, 2)[0][-1]
+            bband2 = ti.bbands(np.array(initial['open']), 50, 2)[2][-1]
+            rsi_26 = ti.rsi(np.array(initial['open']), 26)[-1]
+            ema_50 = ti.ema(np.array(initial['open']), 50)[-1]
+            ema_200 = ti.ema(np.array(initial['open']), 200)[-1]
 
-    
+            final.append({'timestamp': dtstring, 'open': float(f), 'bband1': bband1, 'bband2': bband2, 'rsi': rsi_26, 'ema1': ema_50, 'ema2': ema_200})
+            initial = pd.DataFrame(final)
 
-                
+
+            initial.columns = ['timestamp', 'open', 'bband1', 'bband2', 'rsi', 'ema1','ema2']
+            print(initial.tail())
+            one = int(initial['ema1'][i] >= initial['ema2'][i]) #ema
+            two = int(initial['rsi'][i] <= 45) #rsi
+            three = int(initial['open'][i] - initial['bband1'][i] <= 0.01) #bbands
+            total = one + two + three
+
+            newOne = int(initial['ema1'][i] >= initial['ema2'][i]) #ema
+            newTwo = int(initial['rsi'][i] >= 90) #rsi
+            newThree = int(initial['bband1'][i] - initial['open'][i] <= 0.01) # bbands
+            newTotal = newOne + newTwo + newThree
+                            
+            if (total >= 2): #buy
+                if b.buy(5, float(initial['open'][i]), 0):
+                    print(create_order('MSFT', 5, 'buy', 'market', 'gtc'))
+
+            elif (newTotal >= 2 or initial['open'][i] >= stopprofit or initial['open'][i] < stoploss): #sell
+                if b.sell(5, initial['open'][i], 0):
+                    print(create_order('MSFT', 5, 'sell', 'market', 'day'))
+            else:
+                print('no trade executed')
+            time.sleep(60)
         
+        stopprofit = float(f) * 1 + (0.01)
+        stoploss = float(f) * 1 - (0.01)
+    except Exception as e:
+        print(e)
