@@ -35,6 +35,7 @@ initial = pd.read_csv('https://www.alphavantage.co/query?function=TIME_SERIES_IN
 initial.drop(['high','low','close','volume'], axis=1, inplace=True)
 initial = initial[::-1].reset_index()
 initial.drop(['index'], axis=1, inplace=True)
+initial = initial[-250:]
 for i in range(100000):
     try:
         now = datetime.now()
@@ -46,9 +47,9 @@ for i in range(100000):
     except Exception as e:
         print(e)
 
-    bband1 = ti.bbands(np.array(initial['open']), 50, 2)[0][-1]
-    bband2 = ti.bbands(np.array(initial['open']), 50, 2)[2][-1]
-    rsi_26 = ti.rsi(np.array(initial['open']), 14)[-1]
+    bband1 = ti.bbands(np.array(initial['open']), 200, 2)[0][-1]
+    bband2 = ti.bbands(np.array(initial['open']), 200, 2)[2][-1]
+    rsi_26 = ti.rsi(np.array(initial['open']), 26)[-1]
     ema_50 = ti.ema(np.array(initial['open']), 50)[-1]
     ema_200 = ti.ema(np.array(initial['open']), 200)[-1]
 
@@ -67,11 +68,11 @@ for i in range(100000):
     newThree = int(bband2 - float(f) <= 0.01 or float(f) > bband2)
     newTotal = newOne + newTwo + newThree
                     
-    if (total >= 2): #buy
+    if (total >= 2 and i > 10): #buy
         if b.buy(5, float(f), i):
             create_order('MSFT', 5, 'buy', 'market', 'gtc')
             print('BUY')
-    elif (newTotal >= 2): #sell
+    elif (newTotal >= 2 and i > 10): #sell
         if b.sell(5, float(f), i):
             create_order('MSFT', 5, 'sell', 'market', 'day')
             print('SELL')

@@ -3,14 +3,15 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import math, numpy as np
 import tulipy as ti
-import seaborn as sns
 
 final = 0.0
 numTrades = 0
 initial = pd.read_csv('https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&interval=1min&symbol=msft&apikey=OUMVBY0VK0HS8I9E&datatype=csv&outputsize=full')
-bband1 = ti.bbands(np.array(initial['open']), 50, 2)[0]
-bband2 = ti.bbands(np.array(initial['open']), 50, 2)[2]
-rsi_26 = ti.rsi(np.array(initial['open']), 14)
+initial = initial[::-1]
+initial = initial.reset_index(drop=True)
+bband1 = ti.bbands(np.array(initial['open']), 200, 2)[0]
+bband2 = ti.bbands(np.array(initial['open']), 200, 2)[2]
+rsi_26 = ti.rsi(np.array(initial['open']), 26)
 ema_50 = ti.ema(np.array(initial['open']), 50)
 ema_200 = ti.ema(np.array(initial['open']), 200)
 bbands = pd.concat([pd.DataFrame(bband1),pd.DataFrame(bband2),pd.DataFrame(rsi_26), pd.DataFrame(ema_50), pd.DataFrame(ema_200)], axis=1)
@@ -25,7 +26,7 @@ buyy = []
 initialInvestment = 1000.0
 
 b = backtester.Backtester(initialInvestment)
-for i in range(len(initial.index)-200,1,-1):
+for i in range(200,len(initial.index)):
     one = int(initial['ema1'][i] >= initial['ema2'][i]) #ema
     two = int(initial['rsi'][i] <= 30) # rsi
     three = int(initial['bband1'][i] - initial['open'][i] <= 0.01 or initial['open'][i] <= initial['bband1'][i]) #bollinger bands

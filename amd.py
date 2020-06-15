@@ -1,20 +1,13 @@
 import requests, json
 import matplotlib.pyplot as plt
-import requests, time
+import time
 import bs4
 from bs4 import BeautifulSoup
 from datetime import datetime
 import pandas as pd
-import json, time, math, backtester
-from stockstats import StockDataFrame
+import math, backtester
 import alpaca_trade_api as tradeapi
-
-APCA_API_KEY_ID = 'PK7ZSKV6Y7F9QA8C82JJ'
-APCA_API_SECRET_KEY = '/zEsiiSsm4po2a4jwyCmWcixmQNf9pKjAgqBtNcT'
-APCA_API_BASE_URL = 'https://paper-api.alpaca.markets'
-api = tradeapi.REST(APCA_API_KEY_ID, APCA_API_SECRET_KEY, APCA_API_BASE_URL, api_version='v2')
-account = api.get_account()
-
+import tulipy as ti, numpy as np
 
 def create_order(symbol, qty, side, type, time_in_force):
     api.submit_order(
@@ -25,64 +18,62 @@ def create_order(symbol, qty, side, type, time_in_force):
         time_in_force=time_in_force
 )
 
-def get_price():
-    r = requests.get('https://finance.yahoo.com/quote/AMD?p=AMD&.tsrc=fin-srch')
-    soup = bs4.BeautifulSoup(r.text, 'lxml')
-    f = soup.find('div',{'class': 'My(6px) Pos(r) smartphone_Mt(6px)'}).find('span').text
-    return float(f)
+APCA_API_KEY_ID = 'PKNUSX6NS0QEFHBETEOP'
+APCA_API_SECRET_KEY = '4ahild/ogj1pZZxrRF9Khn4tcgYmA8fNZg04Rfih'
+APCA_API_BASE_URL = 'https://paper-api.alpaca.markets'
+api = tradeapi.REST(APCA_API_KEY_ID, APCA_API_SECRET_KEY, APCA_API_BASE_URL, api_version='v2')
+account = api.get_account()
 
 
-
-def scrape(df, stopprofit, stoploss):
+initialInvestment = 1000.0
+stopprofit = 0
+stoploss = 0
+b = backtester.Backtester(initialInvestment)
+final = []
+f = ''
+initial = pd.read_csv('https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&interval=1min&symbol=amd&apikey=OUMVBY0VK0HS8I9E&datatype=csv&outputsize=full')
+initial.drop(['high','low','close','volume'], axis=1, inplace=True)
+initial = initial[::-1].reset_index()
+initial.drop(['index'], axis=1, inplace=True)
+initial = initial[-250:]
+for i in range(100000):
     try:
-        count = 0
         now = datetime.now()
         # dd/mm/YY H:M:S
-        dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
-        f = ''
-        r = requests.get('https://finance.yahoo.com/quote/AMD?p=AMD&.tsrc=fin-srch')
+        dtstring = now.strftime("%Y-%m-%d %H:%M:%S")
+        r = requests.get('https://finance.yahoo.com/quote/AMD')
         soup = bs4.BeautifulSoup(r.text, 'lxml')
         f = soup.find('div',{'class': 'My(6px) Pos(r) smartphone_Mt(6px)'}).find('span').text
-        # datetime object containing current date and time
-        now = datetime.now()
-        # dd/mm/YY H:M:S
-        dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
+    except Exception as e:
+        print(e)
 
-        count += 1
-        dict1 = {'Time': dt_string, 'close': float(f)}
-        total.append(dict1)
-        initial = pd.DataFrame(total)
+    bband1 = ti.bbands(np.array(initial['open']), 50, 2)[0][-1]
+    bband2 = ti.bbands(np.array(initial['open']), 50, 2)[2][-1]
+    rsi_26 = ti.rsi(np.array(initial['open']), 14)[-1]
+    ema_50 = ti.ema(np.array(initial['open']), 50)[-1]
+    ema_200 = ti.ema(np.array(initial['open']), 200)[-1]
 
-        stock = StockDataFrame.retype(initial)
-        initial['bband1'] = stock['boll_lb']
-        initial['bband2'] = stock['boll_ub']
-                        
-        if ((stock['rsi_6'][i] < 45 and initial['close'][i] - initial['bband1'][i] < 0.1)): #buy
-            if b.buy(math.floor(initialInvestment/initial['close'][i]), initial['close'][i], i):
-                print(create_order('AMD', 9, 'buy', 'market', 'gtc'))
-
-        elif ((stock['rsi_6'][i] > 60 and initial['bband2'][i] - initial['close'][i] < 0.1) or float(f) >= stopprofit or float(f) <= stoploss): #sell
-            if b.sell(b.get_current_buys(), initial['close'][i], i):
-                print(create_order('AMD', 9, 'sell', 'market', 'day'))
-        else:
-            print('no trade executed')
-
-        stopprofit = get_price() + 0.2
-        stoploss = get_price() - 0.5
-    except:
-        print('Error!')
-
-                
-            
+    initial = initial.append({'timestamp': dtstring, 'open': float(f), 'bband1': bband1, 'bband2': bband2, 'rsi': rsi_26, 'ema1': ema_50, 'ema2': ema_200}, ignore_index=True)
+    print(initial.tail())
 
 
+    initial.columns = ['timestamp', 'open', 'bband1', 'bband2', 'rsi', 'ema1','ema2']
+    one = int(ema_50 > ema_200) #ema
+    two = int(rsi_26 < 30) # rsi
+    three = int(float(f) - bband1 <= 0.01 or float(f) < bband1) #bollinger bands
+    total = one + two + three
 
-total = []
-initialInvestment = 500.0
-stopprofit = get_price() + 0.2
-stoploss = get_price() - 0.2
-b = backtester.Backtester(initialInvestment)
-df = pd.DataFrame()
-for i in range(100000):
-    time.sleep(20)
-    scrape(df, stopprofit, stoploss)
+    newOne = int(ema_200 > ema_50)
+    newTwo = int(rsi_26 > 70)
+    newThree = int(bband2 - float(f) <= 0.01 or float(f) > bband2)
+    newTotal = newOne + newTwo + newThree
+                    
+    if (total >= 2 and i > 10): #buy
+        if b.buy(5, float(f), i):
+            create_order('AMD', 5, 'buy', 'market', 'gtc')
+            print('BUY')
+    elif (newTotal >= 2 and i > 10): #sell
+        if b.sell(5, float(f), i):
+            create_order('AMD', 5, 'sell', 'market', 'day')
+            print('SELL')
+    time.sleep(60)
