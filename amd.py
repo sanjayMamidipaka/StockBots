@@ -31,7 +31,7 @@ stoploss = 0
 b = backtester.Backtester(initialInvestment)
 final = []
 f = ''
-initial = pd.read_csv('https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&interval=1min&symbol=amd&apikey=OUMVBY0VK0HS8I9E&datatype=csv&outputsize=full')
+initial = pd.read_csv('https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&interval=1min&symbol=work&apikey=OUMVBY0VK0HS8I9E&datatype=csv&outputsize=full')
 initial.drop(['high','low','close','volume'], axis=1, inplace=True)
 initial = initial[::-1].reset_index()
 initial.drop(['index'], axis=1, inplace=True)
@@ -41,7 +41,7 @@ for i in range(100000):
         now = datetime.now()
         # dd/mm/YY H:M:S
         dtstring = now.strftime("%Y-%m-%d %H:%M:%S")
-        r = requests.get('https://finance.yahoo.com/quote/AMD')
+        r = requests.get('https://finance.yahoo.com/quote/WORK')
         soup = bs4.BeautifulSoup(r.text, 'lxml')
         f = soup.find('div',{'class': 'My(6px) Pos(r) smartphone_Mt(6px)'}).find('span').text
     except Exception as e:
@@ -70,10 +70,10 @@ for i in range(100000):
                     
     if (total >= 2 and i > 10): #buy
         if b.buy(5, float(f), i):
-            create_order('AMD', 5, 'buy', 'market', 'gtc')
+            create_order('WORK', 5, 'buy', 'market', 'gtc')
             print('BUY')
     elif (newTotal >= 2 and i > 10): #sell
         if b.sell(5, float(f), i):
-            create_order('AMD', 5, 'sell', 'market', 'day')
+            create_order('WORK', 5, 'sell', 'market', 'day')
             print('SELL')
     time.sleep(60)
