@@ -39,7 +39,7 @@ for i in range(200,len(initial.index)):
     
 
     if (total >= 3): #buy
-        if b.buy(math.floor(float(initialInvestment)/float(initial['open'][i])), float(initial['open'][i]), i):
+        if b.buy(math.floor(initialInvestment/initial['open'][i]), float(initial['open'][i]), i):
             numTrades += 1
             buyx.append(i)
             buyy.append(initial['open'][i])
