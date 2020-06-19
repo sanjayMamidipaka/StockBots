@@ -35,7 +35,7 @@ def on_message(ws, message):
     global i
     i += 1
     print(i)
-    if i > 10:
+    if i > 3:
         checked = False
         print('received message')
         #print(message)
@@ -64,25 +64,27 @@ def on_message(ws, message):
         bbands = ta.bbands(initial['close'], length=200, std=2) #calculating indicators
         ema_50 = np.array(ta.ema(initial['close'], length=50))[-1]
         ema_200 = np.array(ta.ema(initial['close'], length=200))[-1]
-        rsi_26 = np.array(ta.rsi(initial['close'], length=26))[-1]
+        macd = ta.macd(initial['close'], 12, 26, 9)
         new_dict['bband1'] = bbands['BBL_200'].iloc[-1]
         new_dict['bband2'] = bbands['BBU_200'].iloc[-1]
         new_dict['ema_50'] = ema_50
         new_dict['ema_200'] = ema_200
-        new_dict['rsi_26'] = rsi_26
+        new_dict['macd'] = macd['MACD_12_26_9'].iloc[-1] 
+        new_dict['macdh'] = macd['MACDH_12_26_9'].iloc[-1] 
+        new_dict['macds'] = macd['MACDS_12_26_9'].iloc[-1] 
         print(new_dict)
         if checked:
             initial = initial.append(new_dict, ignore_index=True)
             print(initial.tail())
 
         one = int(ema_50 >= ema_200) #ema
-        two = int(rsi_26 <= 30) #rsi
+        two = int(macd['MACD_12_26_9'].iloc[-1] >= macd['MACDS_12_26_9'].iloc[-1] and macd['MACDH_12_26_9'].iloc[-1] >= 0) #rsi
         three = int(close_price - bbands['BBL_200'].iloc[-1] <= 0.01 or close_price < bbands['BBL_200'].iloc[-1]) #bollinger bands
         four = int(close_price <= vwap_copy) #volume
         total = one + two + three + four
 
         newOne = int(ema_200 >= ema_50)
-        newTwo = int(rsi_26 >= 70)
+        newTwo = int(macd['MACD_12_26_9'].iloc[-1] <= macd['MACDS_12_26_9'].iloc[-1] and macd['MACDH_12_26_9'].iloc[-1] <= 0)
         newThree = int(bbands['BBU_200'].iloc[-1] - close_price <= 0.01 or close_price > bbands['BBU_200'].iloc[-1])
         newFour = int(close_price >= vwap_copy)
         newTotal = newOne + newTwo + newThree + newFour
