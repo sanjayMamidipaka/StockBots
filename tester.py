@@ -3,8 +3,10 @@ import matplotlib.pyplot as plt
 import numpy as np 
 import pandas_ta as ta
 import backtester, math
+import seaborn as sns
+sns.set()
 
-initial = pd.read_csv('https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&interval=30min&symbol=msft&apikey=OUMVBY0VK0HS8I9E&datatype=csv&outputsize=full')
+initial = pd.read_csv('https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&interval=1min&symbol=msft&apikey=OUMVBY0VK0HS8I9E&datatype=csv&outputsize=full')
 initial = initial[::-1]
 initial = initial.reset_index(drop=True)
 
@@ -55,7 +57,7 @@ if b.sell(b.get_current_buys(), initial['open'][i], i): #sell everything once th
     sellx.append(i)
     selly.append(initial['open'][i])
 
-initial['open'].plot()
+initial['open'].plot(color='b')
 plt.scatter(sellx, selly,c='red', label='sell')
 plt.scatter(buyx, buyy,c='green', label='buy')
 plt.legend()

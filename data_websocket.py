@@ -34,11 +34,8 @@ def on_message(ws, message):
     global initial
     global i
     i += 1
-    print(i)
-    if i > 3:
+    if i > 10:
         checked = False
-        print('received message')
-        #print(message)
         new_dict = {}
         info_dict = json.loads(message)
         info_dict = info_dict['data']
@@ -72,7 +69,6 @@ def on_message(ws, message):
         new_dict['macd'] = macd['MACD_12_26_9'].iloc[-1] 
         new_dict['macdh'] = macd['MACDH_12_26_9'].iloc[-1] 
         new_dict['macds'] = macd['MACDS_12_26_9'].iloc[-1] 
-        print(new_dict)
         if checked:
             initial = initial.append(new_dict, ignore_index=True)
             print(initial.tail())
@@ -92,11 +88,9 @@ def on_message(ws, message):
         if (total >= 3): #buy
             if b.buy(5, close_price, i):
                 create_order('MSFT', 5, 'buy', 'market', 'gtc')
-                print('BUY')
         elif (newTotal >= 3): #sell
             if b.sell(5, close_price, i):
                 create_order('MSFT', 5, 'sell', 'market', 'day')
-                print('SELL')
 
 
 socket = 'wss://data.alpaca.markets/stream'
