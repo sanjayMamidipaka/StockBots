@@ -13,9 +13,12 @@ class Backtester(object):
         self.sells = 0
         self.currentSells = 0
         self.currentlyBought = 0
+        self.sharpe_list = []
+        self.treasury_rate = 0.0
     def sell(self, shares, price, i):
         if self.buys - self.sells >= 1 and self.buys > 0: #checks to make sure that you have bought something and that you currently have more buys than sells
             self.initialInvestment += (shares * price)
+            self.sharpe_list.append((shares * price) - self.first)
             self.sells += shares
             self.buys  = 0
             self.currentlyBought = 0
@@ -38,6 +41,11 @@ class Backtester(object):
 
     def get_current_buys(self):
         return self.buys - self.sells
+
+    def get_sharpe(self):
+        std = np.std(np.array(self.sharpe_list))
+        return (((self.initialInvestment - self.first)/self.first)*100 - self.treasury_rate)/std
+
 
         
         

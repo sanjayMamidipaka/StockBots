@@ -5,9 +5,6 @@ import pandas_ta as ta
 import alpaca_trade_api as tradeapi
 import backtester
 from datetime import datetime
-# {"action": "authenticate","data": {"key_id": "PKNUSX6NS0QEFHBETEOP", "secret_key": "4ahild/ogj1pZZxrRF9Khn4tcgYmA8fNZg04Rfih"}}
-
-# {"action": "listen", "data": {"streams": ["AM.SPY"]}}
 
 def create_order(symbol, qty, side, type, time_in_force):
     api.submit_order(
@@ -19,6 +16,7 @@ def create_order(symbol, qty, side, type, time_in_force):
 )
 
 def on_open(ws):
+    print('open')
     auth_data = {
         "action": "authenticate",
         "data": {"key_id": API_KEY, "secret_key": SECRET_KEY}

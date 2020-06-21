@@ -6,9 +6,8 @@ import backtester, math
 import seaborn as sns
 sns.set()
 
-initial = pd.read_csv('https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&interval=1min&symbol=msft&apikey=OUMVBY0VK0HS8I9E&datatype=csv&outputsize=full')
+initial = pd.read_csv('https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&interval=11min&symbol=msft&apikey=OUMVBY0VK0HS8I9E&datatype=csv&outputsize=full', index_col='timestamp', parse_dates=True)
 initial = initial[::-1]
-initial = initial.reset_index(drop=True)
 
 bbands = ta.bbands(initial['close'], length=200, std=2) #calculating indicators
 ema_50 = ta.ema(initial['close'], length=50)
@@ -16,9 +15,9 @@ ema_200 = ta.ema(initial['close'], length=200)
 macd = ta.macd(initial['close'], 12, 26, 9)
 vwap = ta.vwap(initial['high'], initial['low'], initial['close'], initial['volume'])
 initial = pd.concat([initial, bbands, ema_50, ema_200, macd['MACD_12_26_9'], macd['MACDH_12_26_9'], macd['MACDS_12_26_9'], vwap], axis=1)
-initial.columns =['timestamp', 'open', 'high', 'low', 'close', 'volume', 'bband1', 'useless', 'bband2', 'ema1', 'ema2', 'macd', 'macdh', 'macds', 'vwap']
+initial.columns =['open', 'high', 'low', 'close', 'volume', 'bband1', 'useless', 'bband2', 'ema1', 'ema2', 'macd', 'macdh', 'macds', 'vwap']
 
-initialInvestment = 1000
+initialInvestment = 10000
 numTrades = 0
 buyx = []
 buyy = []
@@ -43,24 +42,25 @@ for i in range(200,len(initial.index)):
     if (total >= 3): #buy
         if b.buy(math.floor(initialInvestment/initial['open'][i]), float(initial['open'][i]), i):
             numTrades += 1
-            buyx.append(i)
+            buyx.append(initial.index[i])
             buyy.append(initial['open'][i])
 
     elif (newTotal >= 3): #sell
         if b.sell(b.get_current_buys(), initial['open'][i], i):
-            sellx.append(i)
+            sellx.append(initial.index[i])
             selly.append(initial['open'][i])
 
 
 i = len(initial.index)-1
 if b.sell(b.get_current_buys(), initial['open'][i], i): #sell everything once the day is done
-    sellx.append(i)
+    sellx.append(initial.index[i])
     selly.append(initial['open'][i])
 
-initial['open'].plot(color='b')
+initial['open'].plot()
 plt.scatter(sellx, selly,c='red', label='sell')
 plt.scatter(buyx, buyy,c='green', label='buy')
 plt.legend()
 print(b.get_returns())
 print('Number of buy-sell pairs:', numTrades)
+print('Sharpe ratio:', b.get_sharpe())
 plt.show()
