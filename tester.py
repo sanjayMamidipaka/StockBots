@@ -6,18 +6,19 @@ import backtester, math
 import seaborn as sns
 sns.set()
 
-initial = pd.read_csv('https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&interval=11min&symbol=msft&apikey=OUMVBY0VK0HS8I9E&datatype=csv&outputsize=full', index_col='timestamp', parse_dates=True)
+initial = pd.read_csv('https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&interval=1min&symbol=amd&apikey=OUMVBY0VK0HS8I9E&datatype=csv&outputsize=full', index_col='timestamp', parse_dates=True)
 initial = initial[::-1]
+#initial = initial[initial.index >= '2020-06-23 09:30:00']
 
-bbands = ta.bbands(initial['close'], length=200, std=2) #calculating indicators
-ema_50 = ta.ema(initial['close'], length=50)
-ema_200 = ta.ema(initial['close'], length=200)
+bbands = ta.bbands(initial['close'], length=50, std=2) #calculating indicators
+ema_50 = ta.hma(initial['close'], length=5)
+ema_200 = ta.hma(initial['close'], length=20)
 macd = ta.macd(initial['close'], 12, 26, 9)
 vwap = ta.vwap(initial['high'], initial['low'], initial['close'], initial['volume'])
 initial = pd.concat([initial, bbands, ema_50, ema_200, macd['MACD_12_26_9'], macd['MACDH_12_26_9'], macd['MACDS_12_26_9'], vwap], axis=1)
 initial.columns =['open', 'high', 'low', 'close', 'volume', 'bband1', 'useless', 'bband2', 'ema1', 'ema2', 'macd', 'macdh', 'macds', 'vwap']
 
-initialInvestment = 10000
+initialInvestment = 1000
 numTrades = 0
 buyx = []
 buyy = []
@@ -25,7 +26,7 @@ sellx = []
 selly = []
 b = backtester.Backtester(initialInvestment)
 for i in range(200,len(initial.index)):
-    one = int(initial['ema1'][i] >= initial['ema2'][i]) #ema
+    one = int(initial['ema1'][i] >= initial['ema2'][i]) #hma, hull moviong average
     two = int(initial['macd'][i] >= initial['macds'][i] and initial['macdh'][i] >= 0) # rsi
     three = int(initial['bband1'][i] - initial['open'][i] <= 0.01 or initial['open'][i] <= initial['bband1'][i]) #bollinger bands
     four = int(initial['open'][i] <= initial['vwap'][i]) #vwap
@@ -40,13 +41,13 @@ for i in range(200,len(initial.index)):
     
 
     if (total >= 3): #buy
-        if b.buy(math.floor(initialInvestment/initial['open'][i]), float(initial['open'][i]), i):
+        if b.buy(math.floor(initialInvestment/initial['open'][i]), float(initial['open'][i]), initial.index[i]):
             numTrades += 1
             buyx.append(initial.index[i])
             buyy.append(initial['open'][i])
 
-    elif (newTotal >= 3): #sell
-        if b.sell(b.get_current_buys(), initial['open'][i], i):
+    elif (newTotal >= 2): #sell
+        if b.sell(b.get_current_buys(), initial['open'][i], initial.index[i]):
             sellx.append(initial.index[i])
             selly.append(initial['open'][i])
 

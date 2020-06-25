@@ -5,6 +5,7 @@ import pandas_ta as ta
 import alpaca_trade_api as tradeapi
 import backtester
 from datetime import datetime
+from datetime import timedelta
 
 def create_order(symbol, qty, side, type, time_in_force):
     api.submit_order(
@@ -32,7 +33,8 @@ def on_message(ws, message):
     global initial
     global i
     i += 1
-    if i > 10:
+
+    if i > 3:
         checked = False
         new_dict = {}
         info_dict = json.loads(message)
@@ -51,19 +53,18 @@ def on_message(ws, message):
                 new_dict['close'] = float(value)
                 checked = True
                 close_price = float(value)
-            elif key == 'v':
-                new_dict['volume'] = float(value)
             elif key == 'vw':
                 new_dict['vwap'] = float(value)
+                vwap_copy = float(value)
 
-        bbands = ta.bbands(initial['close'], length=200, std=2) #calculating indicators
-        ema_50 = np.array(ta.ema(initial['close'], length=50))[-1]
-        ema_200 = np.array(ta.ema(initial['close'], length=200))[-1]
+        bbands = ta.bbands(initial['close'], length=50, std=2) #calculating indicators
+        ema_50 = np.array(ta.hma(initial['close'], length=5))[-1]
+        ema_200 = np.array(ta.hma(initial['close'], length=20))[-1]
         macd = ta.macd(initial['close'], 12, 26, 9)
         new_dict['bband1'] = bbands['BBL_200'].iloc[-1]
         new_dict['bband2'] = bbands['BBU_200'].iloc[-1]
-        new_dict['ema_50'] = ema_50
-        new_dict['ema_200'] = ema_200
+        new_dict['hma_50'] = ema_50
+        new_dict['hma_200'] = ema_200
         new_dict['macd'] = macd['MACD_12_26_9'].iloc[-1] 
         new_dict['macdh'] = macd['MACDH_12_26_9'].iloc[-1] 
         new_dict['macds'] = macd['MACDS_12_26_9'].iloc[-1] 
@@ -74,20 +75,22 @@ def on_message(ws, message):
         one = int(ema_50 >= ema_200) #ema
         two = int(macd['MACD_12_26_9'].iloc[-1] >= macd['MACDS_12_26_9'].iloc[-1] and macd['MACDH_12_26_9'].iloc[-1] >= 0) #rsi
         three = int(close_price - bbands['BBL_200'].iloc[-1] <= 0.01 or close_price < bbands['BBL_200'].iloc[-1]) #bollinger bands
-        four = int(close_price <= vwap_copy) #volume
+        four = int(close_price <= vwap_copy) #vwap
         total = one + two + three + four
+        print('Total:', total)
 
         newOne = int(ema_200 >= ema_50)
         newTwo = int(macd['MACD_12_26_9'].iloc[-1] <= macd['MACDS_12_26_9'].iloc[-1] and macd['MACDH_12_26_9'].iloc[-1] <= 0)
         newThree = int(bbands['BBU_200'].iloc[-1] - close_price <= 0.01 or close_price > bbands['BBU_200'].iloc[-1])
         newFour = int(close_price >= vwap_copy)
         newTotal = newOne + newTwo + newThree + newFour
+        print('newTotal:', newTotal)
                         
-        if (total >= 3): #buy
-            if b.buy(5, close_price, i):
+        if (total >= 3 and new_dict['timestamp'] > initial_wait): #buy
+            if b.buy(5, close_price, 5):
                 create_order('MSFT', 5, 'buy', 'market', 'gtc')
-        elif (newTotal >= 3): #sell
-            if b.sell(5, close_price, i):
+        elif (newTotal >= 2 and new_dict['timestamp'] > initial_wait): #sell
+            if b.sell(5, close_price, 5):
                 create_order('MSFT', 5, 'sell', 'market', 'day')
 
 
@@ -101,9 +104,12 @@ account = api.get_account()
 
 initial = pd.read_csv('https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&interval=1min&symbol=msft&apikey=OUMVBY0VK0HS8I9E&datatype=csv&outputsize=full')
 initial = initial[::-1].reset_index()
-initial.drop(['index'], axis=1, inplace=True)
+initial.drop(['index','volume'], axis=1, inplace=True)
+initial = initial[-250:]
 i = 0
-b = backtester.Backtester(1000)
+b = backtester.Backtester(1200)
+initial_wait = datetime.now() + timedelta(minutes = 30)
+initial_wait = initial_wait.strftime("%Y-%m-%d %H:%M:%S")
 
 
 
