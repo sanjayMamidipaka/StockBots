@@ -12,7 +12,7 @@ def scrape(df):
     dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
     f = ''
     try:
-        r = requests.get('https://finance.yahoo.com/quote/MSFT?p=MSFT&.tsrc=fin-srch')
+        r = requests.get('https://finance.yahoo.com/quote/EURUSD=X/')
         soup = bs4.BeautifulSoup(r.text, 'lxml')
         f = soup.find('div',{'class': 'My(6px) Pos(r) smartphone_Mt(6px)'}).find('span').text
         # datetime object containing current date and time

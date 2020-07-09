@@ -100,13 +100,13 @@ APCA_API_BASE_URL = 'https://paper-api.alpaca.markets'
 api = tradeapi.REST(API_KEY, SECRET_KEY, APCA_API_BASE_URL, api_version='v2')
 account = api.get_account()
 
-initial = pd.read_csv('https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&interval=1min&symbol=msft&apikey=OUMVBY0VK0HS8I9E&datatype=csv&outputsize=full')
+initial = pd.read_csv('https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&interval=1min&symbol=MSFT&apikey=OUMVBY0VK0HS8I9E&datatype=csv&outputsize=full')
 initial = initial[::-1].reset_index()
 initial.drop(['index','volume'], axis=1, inplace=True)
 initial = initial[-170:]
 i = 0
-b = backtester.Backtester(12000)
-initial_wait = datetime.now() + timedelta(minutes = 30)
+b = backtester.Backtester(120000)
+initial_wait = datetime.now() + timedelta(minutes = 5)
 initial_wait = initial_wait.strftime("%Y-%m-%d %H:%M:%S")
 
 
