@@ -12,8 +12,8 @@ initial = initial[::-1]
 
 bbands = ta.bbands(initial['close'], length=50, std=2) #calculating indicators
 rsi = ta.rsi(initial['close'], )
-ema_50 = ta.hma(initial['close'], length=5)
-ema_200 = ta.hma(initial['close'], length=20)
+ema_50 = ta.ema(initial['close'], length=5)
+ema_200 = ta.ema(initial['close'], length=20)
 macd = ta.macd(initial['close'], 12, 26, 9)
 vwap = ta.vwap(initial['high'], initial['low'], initial['close'], initial['volume'])
 initial = pd.concat([initial, bbands, ema_50, ema_200, macd, vwap], axis=1)
@@ -38,16 +38,17 @@ for i in range(50,len(initial.index)-1):
     newThree = int(initial['open'][i] - initial['bband2'][i] <= 0.01 or initial['open'][i] >= initial['bband2'][i])
     newFour = int(initial['open'][i] > initial['vwap'][i]) #vwap
     newTotal = newOne + newTwo + newThree + newFour
+    print(initial.tail())
 
     
 
-    if (total >= 3 or newTotal == 0): #buy
+    if (total >= 3): #buy
         if b.buy(math.floor(initialInvestment/initial['open'][i]), float(initial['open'][i]), initial.index[i]):
             numTrades += 1
             buyx.append(initial.index[i])
             buyy.append(initial['open'][i])
 
-    elif (newTotal >= 3 or total == 0): #sell
+    elif (newTotal >= 3): #sell
         if b.sell(b.get_current_buys(), initial['open'][i], initial.index[i]):
             sellx.append(initial.index[i])
             selly.append(initial['open'][i])

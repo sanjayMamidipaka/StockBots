@@ -32,9 +32,11 @@ def on_open(ws):
 def on_message(ws, message):
     global initial
     global i
+    global indicators
     i += 1
     checked = False
     new_dict = {}
+    indic_dict = {}
     info_dict = json.loads(message)
     info_dict = info_dict['data']
     close_price = 0.0
@@ -55,31 +57,38 @@ def on_message(ws, message):
             new_dict['vwap'] = float(value)
             vwap_copy = float(value)
 
-    bbands = ta.bbands(initial['close'], length=50, std=2) #calculating indicators
-    ema_50 = np.array(ta.hma(initial['close'], length=5))[-1]
-    ema_200 = np.array(ta.hma(initial['close'], length=20))[-1]
-    macd = ta.macd(initial['close'], 12, 26, 9)
-    new_dict['bband1'] = bbands['BBL_50'].iloc[-1]
-    new_dict['bband2'] = bbands['BBU_50'].iloc[-1]
-    new_dict['hma_50'] = ema_50
-    new_dict['hma_200'] = ema_200
-    new_dict['macd'] = macd['MACD_12_26_9'].iloc[-1] 
-    new_dict['macdh'] = macd['MACDH_12_26_9'].iloc[-1] 
-    new_dict['macds'] = macd['MACDS_12_26_9'].iloc[-1] 
     if checked:
         initial = initial.append(new_dict, ignore_index=True)
         print(initial.tail())
 
-    one = int(ema_50 >= ema_200) #ema
-    two = int(macd['MACD_12_26_9'].iloc[-1] >= macd['MACDS_12_26_9'].iloc[-1] and macd['MACDH_12_26_9'].iloc[-1] >= 0) #rsi
-    three = int(close_price - bbands['BBL_50'].iloc[-1] <= 0.01 or close_price <= bbands['BBL_50'].iloc[-1]) #bollinger bands
+    bbands = ta.bbands(initial['close'], length=30, std=2) #calculating indicators
+    ema_50 = np.array(ta.hma(initial['close'], length=5))[-1]
+    ema_200 = np.array(ta.hma(initial['close'], length=20))[-1]
+    ema_500 = np.array(ta.hma(initial['close'], length=50))[-1]
+    macd = ta.macd(initial['close'], 5, 35, 5)
+    indic_dict['bband1'] = bbands['BBL_30'].iloc[-1]
+    indic_dict['bband2'] = bbands['BBU_30'].iloc[-1]
+    indic_dict['hma_50'] = ema_50
+    indic_dict['hma_200'] = ema_200
+    indic_dict['hma_500'] = ema_500
+    indic_dict['macd'] = macd['MACD_5_35_5'].iloc[-1] 
+    indic_dict['macdh'] = macd['MACDH_5_35_5'].iloc[-1] 
+    indic_dict['macds'] = macd['MACDS_5_35_5'].iloc[-1] 
+    if checked:
+        indicators = indicators.append(indic_dict, ignore_index=True)
+        print(indicators.tail())
+    
+
+    one = int(ema_50 >= ema_200 and ema_200 >= ema_500) #ema
+    two = int(macd['MACD_5_35_5'].iloc[-1] >= macd['MACDS_5_35_5'].iloc[-1] and macd['MACDH_5_35_5'].iloc[-1] >= 0) #rsi
+    three = int(close_price <= bbands['BBL_30'].iloc[-1]) #bollinger bands
     four = int(close_price <= vwap_copy) #vwap
     total = one + two + three + four
     print('Total:', total)
 
-    newOne = int(ema_50 < ema_200)
-    newTwo = int(macd['MACD_12_26_9'].iloc[-1] < macd['MACDS_12_26_9'].iloc[-1] and macd['MACDH_12_26_9'].iloc[-1] < 0)
-    newThree = int(bbands['BBU_50'].iloc[-1] - close_price < 0.01 or close_price > bbands['BBU_50'].iloc[-1])
+    newOne = int(ema_50 < ema_200 and ema_200 < ema_500)
+    newTwo = int(macd['MACD_5_35_5'].iloc[-1] < macd['MACDS_5_35_5'].iloc[-1] and macd['MACDH_5_35_5'].iloc[-1] < 0)
+    newThree = int(close_price > bbands['BBU_30'].iloc[-1])
     newFour = int(close_price > vwap_copy)
     newTotal = newOne + newTwo + newThree + newFour
     print('newTotal:', newTotal)
@@ -100,6 +109,7 @@ APCA_API_BASE_URL = 'https://paper-api.alpaca.markets'
 api = tradeapi.REST(API_KEY, SECRET_KEY, APCA_API_BASE_URL, api_version='v2')
 account = api.get_account()
 
+indicators = pd.DataFrame()
 initial = pd.read_csv('https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&interval=1min&symbol=msft&apikey=OUMVBY0VK0HS8I9E&datatype=csv&outputsize=full')
 initial = initial[::-1].reset_index()
 initial.drop(['index','volume'], axis=1, inplace=True)

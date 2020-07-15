@@ -18,7 +18,7 @@ ema_5 = ta.ema(initial['close'], length=5)
 ema_20 = ta.ema(initial['close'], length=20)
 ema_50 = ta.ema(initial['close'], length=50)
 macd = ta.macd(initial['close'], 12, 26, 9)
-rsi = ta.rsi(initial['close'], 28)
+rsi = ta.rsi(initial['close'], 14)
 initial = pd.concat([initial, bbands, ema_5, ema_20, ema_50, macd, rsi], axis=1)
 initial.columns =['open', 'high', 'low', 'close', 'bband1', 'useless', 'bband2', 'ema1', 'ema2', 'ema3', 'macd', 'macdh', 'macds', 'rsi']
 
