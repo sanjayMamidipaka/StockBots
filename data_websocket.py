@@ -6,6 +6,11 @@ import alpaca_trade_api as tradeapi
 import backtester
 from datetime import datetime
 from datetime import timedelta
+from scipy.signal import find_peaks, find_peaks_cwt
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import classification_report, confusion_matrix
+import pickle
 
 def create_order(symbol, qty, side, type, time_in_force):
     api.submit_order(
@@ -40,66 +45,56 @@ def on_message(ws, message):
     info_dict = json.loads(message)
     info_dict = info_dict['data']
     close_price = 0.0
-    vwap_copy = 0.0 
-    new_dict['timestamp'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     for key, value in info_dict.items():
         if key == 'o':
             new_dict['open'] = float(value)
+            indic_dict['open'] = float(value)
         elif key == 'h':
             new_dict['high'] = float(value)
+            indic_dict['high'] = float(value)
         elif key == 'l':
             new_dict['low'] = float(value)
+            indic_dict['low'] = float(value)
         elif key == 'c':
             new_dict['close'] = float(value)
+            indic_dict['close'] = float(value)
             checked = True
             close_price = float(value)
         elif key == 'vw':
             new_dict['vwap'] = float(value)
-            vwap_copy = float(value)
+            indic_dict['vwap'] = float(value)
 
     if checked:
         initial = initial.append(new_dict, ignore_index=True)
-        print(initial.tail())
 
-    bbands = ta.bbands(initial['close'], length=30, std=2) #calculating indicators
-    ema_50 = np.array(ta.hma(initial['close'], length=5))[-1]
-    ema_200 = np.array(ta.hma(initial['close'], length=20))[-1]
-    ema_500 = np.array(ta.hma(initial['close'], length=50))[-1]
-    macd = ta.macd(initial['close'], 5, 35, 5)
-    indic_dict['bband1'] = bbands['BBL_30'].iloc[-1]
-    indic_dict['bband2'] = bbands['BBU_30'].iloc[-1]
-    indic_dict['hma_50'] = ema_50
-    indic_dict['hma_200'] = ema_200
-    indic_dict['hma_500'] = ema_500
-    indic_dict['macd'] = macd['MACD_5_35_5'].iloc[-1] 
-    indic_dict['macdh'] = macd['MACDH_5_35_5'].iloc[-1] 
-    indic_dict['macds'] = macd['MACDS_5_35_5'].iloc[-1] 
+    bbands = ta.bbands(initial['close'], length=50, std=2) #calculating indicators
+    ema_50 = np.array(ta.ema(initial['close'], length=5))[-1]
+    ema_200 = np.array(ta.ema(initial['close'], length=20))[-1]
+    ema_500 = np.array(ta.ema(initial['close'], length=50))[-1]
+    #macd = ta.macd(initial['close'], 5, 35, 5)
+    indic_dict['bband1'] = bbands['BBL_50'].iloc[-1]
+    indic_dict['useless'] = bbands['BBM_50'].iloc[-1]
+    indic_dict['bband2'] = bbands['BBU_50'].iloc[-1]
+    indic_dict['ema1'] = ema_50
+    indic_dict['ema2'] = ema_200
+    indic_dict['ema3'] = ema_500
+    # indic_dict['macd'] = macd['MACD_5_35_5'].iloc[-1] 
+    # indic_dict['macdh'] = macd['MACDH_5_35_5'].iloc[-1] 
+    # indic_dict['macds'] = macd['MACDS_5_35_5'].iloc[-1] 
     if checked:
         indicators = indicators.append(indic_dict, ignore_index=True)
-        print(indicators.tail())
     
+        pred = rfc.predict([indicators.iloc[-1]]) #PREDICT
+        print(indicators.tail())
+                            
+        if (pred[0] > float(predictions[-1]) and i > 5): #buy
+            if b.buy(5, close_price, 5):
+                create_order('MSFT', 5, 'buy', 'market', 'gtc')
+        elif (pred[0] < float(predictions[-1]) and i > 5): #sell
+            if b.sell(5, close_price, 5):
+                create_order('MSFT', 5, 'sell', 'market', 'day')
 
-    one = int(ema_50 >= ema_200 and ema_200 >= ema_500) #ema
-    two = int(macd['MACD_5_35_5'].iloc[-1] >= macd['MACDS_5_35_5'].iloc[-1] and macd['MACDH_5_35_5'].iloc[-1] >= 0) #rsi
-    three = int(close_price <= bbands['BBL_30'].iloc[-1]) #bollinger bands
-    four = int(close_price <= vwap_copy) #vwap
-    total = one + two + three + four
-    print('Total:', total)
-
-    newOne = int(ema_50 < ema_200 and ema_200 < ema_500)
-    newTwo = int(macd['MACD_5_35_5'].iloc[-1] < macd['MACDS_5_35_5'].iloc[-1] and macd['MACDH_5_35_5'].iloc[-1] < 0)
-    newThree = int(close_price > bbands['BBU_30'].iloc[-1])
-    newFour = int(close_price > vwap_copy)
-    newTotal = newOne + newTwo + newThree + newFour
-    print('newTotal:', newTotal)
-                    
-    if (total >= 3 and new_dict['timestamp'] > initial_wait): #buy
-        if b.buy(5, close_price, 5):
-            create_order('MSFT', 5, 'buy', 'market', 'gtc')
-    elif (newTotal >= 3 and new_dict['timestamp'] > initial_wait): #sell
-        if b.sell(5, close_price, 5):
-            create_order('MSFT', 5, 'sell', 'market', 'day')
-
+    predictions.append(pred)
 
 socket = 'wss://data.alpaca.markets/stream'
 API_KEY= 'PKOT8ZWPLGJ94Q705388'
@@ -110,16 +105,19 @@ api = tradeapi.REST(API_KEY, SECRET_KEY, APCA_API_BASE_URL, api_version='v2')
 account = api.get_account()
 
 indicators = pd.DataFrame()
-initial = pd.read_csv('https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&interval=1min&symbol=msft&apikey=OUMVBY0VK0HS8I9E&datatype=csv&outputsize=full')
-initial = initial[::-1].reset_index()
-initial.drop(['index','volume'], axis=1, inplace=True)
-initial = initial[-170:]
 i = 0
 b = backtester.Backtester(12000)
-initial_wait = datetime.now() + timedelta(minutes = 30)
-initial_wait = initial_wait.strftime("%Y-%m-%d %H:%M:%S")
+X_test = pd.DataFrame()
+from sklearn.ensemble import RandomForestRegressor
+rfc = RandomForestRegressor(n_estimators=100)
+predictions = [200.8]
+# rfc.fit(X, y)
+# initial.drop(['decisions', 'volume', 'timestamp'], inplace=True, axis=1)
+with open('stock_model.pkl', 'rb') as file:
+    rfc = pickle.load(file)
 
 
 
 ws = websocket.WebSocketApp(socket, on_open=on_open, on_message=on_message)
 ws.run_forever()
+

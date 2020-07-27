@@ -6,8 +6,12 @@ import pandas as pd
 import json
 import time
 import pandas_ta as ta
-import backtester 
+import backtester
 from datetime import datetime, timedelta
+from sklearn.metrics import classification_report, confusion_matrix
+from scipy.signal import find_peaks, find_peaks_cwt
+from sklearn.model_selection import train_test_split
+import pickle
 
 def buy():
     url = 'https://api-fxpractice.oanda.com/v3/accounts/101-001-15560575-001/orders'
@@ -15,8 +19,8 @@ def buy():
     hed = {'Authorization': 'Bearer ' + auth_token,
             "Content-Type": "application/json"}
     data = {"order": {
-        "units": "800",
-        "instrument": "GBP_USD",
+        "units": "1420",
+        "instrument": "AUD_USD",
         "timeInForce": "FOK",
         "type": "MARKET",
         "positionFill": "DEFAULT"}}
@@ -30,8 +34,8 @@ def sell():
     hed = {'Authorization': 'Bearer ' + auth_token,
             "Content-Type": "application/json"}
     data = {"order": {
-        "units": "-800",
-        "instrument": "GBP_USD",
+        "units": "-1420",
+        "instrument": "AUD_USD",
         "timeInForce": "FOK",
         "type": "MARKET",
         "positionFill": "DEFAULT"}}
@@ -41,7 +45,7 @@ def sell():
 
 def get_close():
     try:
-        url = 'https://api-fxpractice.oanda.com/v3/accounts/101-001-15560575-001/instruments/GBP_USD/candles?price=M&granularity=M1&count=1'
+        url = 'https://api-fxpractice.oanda.com/v3/accounts/101-001-15560575-001/instruments/AUD_USD/candles?price=M&granularity=M1&count=1'
         auth_token = '6851735fed54c0315497c6a103297127-f7f82230f0c38eb85f95bdbb816dfc85'
         hed = {'Authorization': 'Bearer ' + auth_token,
                 "Content-Type": "application/json"}
@@ -50,7 +54,7 @@ def get_close():
 
         content = json.loads(buy.content)
 
-        return float(content['candles'][-1]['mid']['c']) #ask first, ask second
+        return float(content['candles'][-1]['mid']['o']), float(content['candles'][-1]['mid']['h']), float(content['candles'][-1]['mid']['l']), float(content['candles'][-1]['mid']['c']) #close first, close second
     except Exception as e:
         return 1.257
     # r = requests.get('https://finance.yahoo.com/quote/GBPUSD=X/')
@@ -58,80 +62,112 @@ def get_close():
     # f = soup.find('div',{'class': 'My(6px) Pos(r) smartphone_Mt(6px)'}).find('span').text
     # return float(f)
 
+def get_decisions(close_column, distance):
+    first = 0
+    last = 20
+    valleys = []
+    peaks = []
+    closes = close_column
+    while last < len(initial.index):
+        index = initial.index[first:last]
+        temp = closes[first:last]
+        valleys.append(index[np.argmin(temp)])
+        peaks.append(index[np.argmax(temp)])
+        first = first + distance
+        last = last + distance
 
-initial = pd.DataFrame(columns=['timestamp', 'ask'])
-indicators = pd.DataFrame(columns = ['bband1_ask', 'bband2_ask', 'macd_ask', 'macdh_ask', 'macds_ask', 'rsi_ask'])
-total = []
-bought_ask = get_close()
+
+    decisions = [(np.nan) for i in range(len(initial.index))]
+    for i in range(len(valleys)):
+        decisions[valleys[i]] = 0
+
+    for i in range(len(peaks)):
+        decisions[peaks[i]] = 1
+
+    return decisions
+
+
+# initial = pd.read_csv('https://www.alphavantage.co/query?function=FX_INTRADAY&from_symbol=aud&to_symbol=USD&interval=1min&apikey=OUMVBY0VK0HS8I9E&outputsize=full&datatype=csv')
+# initial = initial[::-1]
+# initial.drop('timestamp', axis=1, inplace=True)
+# bbands = ta.bbands(initial['close'], length=50, std=2) #calculating indicators
+# ema_5 = ta.ema(initial['close'], length=5)
+# ema_20 = ta.ema(initial['close'], length=20)
+# ema_50 = ta.ema(initial['close'], length=50)
+# macd = ta.macd(initial['close'], 5, 35, 5)
+# rsi = ta.rsi(initial['close'], 14)
+# initial = pd.concat([initial, bbands, ema_5, ema_20, ema_50, macd, rsi], axis=1)
+# initial.columns =['open', 'high', 'low', 'close', 'bband1', 'useless', 'bband2', 'ema1', 'ema2', 'ema3', 'macd', 'macdh', 'macds', 'rsi']
+
+# initial['decisions'] = get_decisions(initial['close'], 10)
+# initial = initial.dropna()
+# X = initial.drop(['decisions'], axis=1)
+# y = initial['decisions']
+# X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.5, shuffle = False, stratify = None)
+from sklearn.ensemble import RandomForestClassifier
+rfc = RandomForestClassifier(n_estimators=100)
+X_test = pd.DataFrame()
+# rfc.fit(X_train, y_train) #TRAIN
+
 b = backtester.Backtester(1000)
-initial_wait = datetime.now() + timedelta(minutes=1)
-initial_wait = initial_wait.strftime("%Y-%m-%d %H:%M:%S")
-sell_status = 0
+# initial_wait = datetime.now() + timedelta(minutes=30)
+# initial_wait = initial_wait.strftime("%Y-%m-%d %H:%M:%S")
+indicators = pd.DataFrame()
+# initial.drop(['decisions', 'open', 'high', 'low'], axis=1, inplace=True)
+with open('forex_model.pkl', 'rb') as file:
+    rfc = pickle.load(file)
 
 for i in range(10000):
     now = datetime.now()
     # dd/mm/YY H:M:S
-    dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
-    f = ''
     new_dict = {}
-    buys = [0]
     indic_dict = {}
-    ask = get_close()
-    # datetime object containing current date and time
-    now = datetime.now()
-    # dd/mm/YY H:M:S
-    dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
+    open1, high, low, close = get_close()
+    new_dict['open'] = float(open1)
+    new_dict['high'] = float(high)
+    new_dict['low'] = float(low)
+    new_dict['close'] = float(close)
+    X_test = X_test.append(new_dict, ignore_index=True)
+    if i < 35:
+        print(X_test.tail())
 
-    new_dict['timestamp'] = dt_string
-    new_dict['ask'] = float(ask)
-    initial = initial.append(new_dict, ignore_index=True)
-    print(initial.tail())
-
-    if i > 50:
-        bbands_ask = ta.bbands(initial['ask'], length=30, std=2) #calculating indicators
-        macd_ask = ta.macd(initial['ask'], 5, 35, 5)
-        rsi_ask = np.array(ta.rsi(initial['ask'], 10))[-1]
-        ema_5_ask = np.array(ta.ema(initial['ask'], 5))[-1]
-        ema_20_ask = np.array(ta.ema(initial['ask'], 20))[-1]
-        ema_50_ask = np.array(ta.ema(initial['ask'], 50))[-1]
-        indic_dict['bband1_ask'] = bbands_ask['BBL_30'].iloc[-1]
-        indic_dict['bband2_ask'] = bbands_ask['BBU_30'].iloc[-1] #BUYS BUYS BUYS
-        indic_dict['macd_ask'] = macd_ask['MACD_5_35_5'].iloc[-1] 
-        indic_dict['macdh_ask'] = macd_ask['MACDH_5_35_5'].iloc[-1] 
-        indic_dict['macds_ask'] = macd_ask['MACDS_5_35_5'].iloc[-1]
-        indic_dict['rsi_ask'] = rsi_ask
-        indic_dict['ema_5_ask'] = ema_5_ask
-        indic_dict['ema_20_ask'] = ema_20_ask
-        indic_dict['ema_50_ask'] = ema_50_ask
-
+    if i >= 35:
+        bbands_close = ta.bbands(X_test['close'], length=50, std=2) #calculating indicators
+        macd_close = ta.macd(X_test['close'], 5, 35, 5)
+        rsi_close = np.array(ta.rsi(X_test['close'], 14))[-1]
+        ema_5_close = np.array(ta.ema(X_test['close'], 5))[-1]
+        ema_20_close = np.array(ta.ema(X_test['close'], 20))[-1]
+        ema_50_close = np.array(ta.ema(X_test['close'], 50))[-1]
+        indic_dict['open'] = float(open1)
+        indic_dict['high'] = float(high)
+        indic_dict['low'] = float(low)
+        indic_dict['close'] = float(close)
+        indic_dict['useless'] = bbands_close['BBM_50'].iloc[-1]
+        indic_dict['bband1'] = bbands_close['BBL_50'].iloc[-1]
+        indic_dict['bband2'] = bbands_close['BBU_50'].iloc[-1] #BUYS BUYS BUYS
+        indic_dict['macd'] = macd_close['MACD_5_35_5'].iloc[-1]
+        indic_dict['macdh'] = macd_close['MACDH_5_35_5'].iloc[-1]
+        indic_dict['macds'] = macd_close['MACDS_5_35_5'].iloc[-1]
+        indic_dict['rsi'] = rsi_close
+        indic_dict['ema1'] = ema_5_close
+        indic_dict['ema2'] = ema_20_close
+        indic_dict['ema3'] = ema_50_close
         indicators = indicators.append(indic_dict, ignore_index=True)
-        print(indicators.tail())
+        pred = rfc.predict([indicators.iloc[-1]]) #PREDICT
+        bs = rfc.predict_proba([indicators.iloc[-1]])
+        print(indicators.tail(), pred, bs)
 
-        one = int(ema_5_ask > ema_20_ask and ema_20_ask > ema_50_ask)
-        two = int(macd_ask['MACD_5_35_5'].iloc[-1] >= macd_ask['MACDS_5_35_5'].iloc[-1] and macd_ask['MACDH_5_35_5'].iloc[-1] >= 0) #macd
-        three = int(float(ask) <= bbands_ask['BBL_30'].iloc[-1]) #bollinger bands
-        four = int(rsi_ask <= 30) #rsi
-        total = one + two + three + four
-        print('Total:', total)
-
-        newOne = int(ema_5_ask < ema_20_ask and ema_20_ask < ema_50_ask)
-        newTwo = int(macd_ask['MACD_5_35_5'].iloc[-1] < macd_ask['MACDS_5_35_5'].iloc[-1] and macd_ask['MACDH_5_35_5'].iloc[-1] < 0) #macd
-        newThree = int(float(ask) >= bbands_ask['BBU_30'].iloc[-1]) #bbands
-        newFour = int(rsi_ask >= 70) #rsi
-        newTotal = newOne + newTwo + newThree + newFour
-        print('newTotal:', newTotal)
-
-        if (total >= 3 and new_dict['timestamp'] > initial_wait): #buy
-            if b.buy(5, float(ask), 5):
+        if (pred == 0 and i > 5): #buy
+            if b.buy(5, float(close), 5):
                 buy()
-                buys.append(float(ask))
-
-        elif (newTotal >= 3 and new_dict['timestamp'] > initial_wait): #sell
-            if b.sell(5, float(ask), 5):
+        elif (pred == 1 and i > 5): #sell
+            if b.sell(5, float(close), 5):
                 sell()
 
 
-    time.sleep(60)
+    if i < 35:
+        time.sleep(150)
+    else:
+        time.sleep(300)
 
 
-    

@@ -9,16 +9,16 @@ from datetime import datetime, timedelta
 import seaborn as sns
 sns.set()
 
-initial = pd.read_csv('https://www.alphavantage.co/query?function=FX_INTRADAY&from_symbol=gbp&to_symbol=USD&interval=5min&apikey=OUMVBY0VK0HS8I9E&outputsize=full&datatype=csv', index_col='timestamp', parse_dates=True)
+initial = pd.read_csv('https://www.alphavantage.co/query?function=FX_INTRADAY&from_symbol=eur&to_symbol=USD&interval=1min&apikey=OUMVBY0VK0HS8I9E&outputsize=full&datatype=csv', index_col='timestamp', parse_dates=True)
 initial = initial[::-1]
 #initial = initial[initial.index > '2020-07-05 09:30:00']
 
-bbands = ta.bbands(initial['close'], length=50, std=2) #calculating indicators
-ema_5 = ta.ema(initial['close'], length=5)
-ema_20 = ta.ema(initial['close'], length=20)
-ema_50 = ta.ema(initial['close'], length=50)
-macd = ta.macd(initial['close'], 12, 26, 9)
-rsi = ta.rsi(initial['close'], 14)
+bbands = ta.bbands(initial['close'], length=200, std=2) #calculating indicators
+ema_5 = ta.ema(initial['close'], length=50)
+ema_20 = ta.ema(initial['close'], length=200)
+ema_50 = ta.ema(initial['close'], length=500)
+macd = ta.macd(initial['close'], 5, 35, 5)
+rsi = ta.rsi(initial['close'], 50)
 initial = pd.concat([initial, bbands, ema_5, ema_20, ema_50, macd, rsi], axis=1)
 initial.columns =['open', 'high', 'low', 'close', 'bband1', 'useless', 'bband2', 'ema1', 'ema2', 'ema3', 'macd', 'macdh', 'macds', 'rsi']
 
@@ -42,15 +42,13 @@ for i in range(50,len(initial.index)-1):
     newFour = int(initial['rsi'][i] >= 70)
     newTotal = newOne + newTwo + newThree + newFour
 
-    
-
     if (total >= 3): #buy
         if b.buy(math.floor(initialInvestment/initial['open'][i]), float(initial['open'][i]), initial.index[i]):
             numTrades += 1
             buyx.append(initial.index[i])
             buyy.append(initial['open'][i])
 
-    elif (newTotal >= 2): #sell
+    elif (newTotal >= 3): #sell
         if b.sell(b.get_current_buys(), initial['open'][i], initial.index[i]):
             sellx.append(initial.index[i])
             selly.append(initial['open'][i])
@@ -61,7 +59,7 @@ if b.sell(b.get_current_buys(), initial['open'][i], i): #sell everything once th
     sellx.append(initial.index[i])
     selly.append(initial['open'][i])
 
-initial['open'].plot()
+initial['close'].plot()
 plt.scatter(sellx, selly,c='red', label='sell', marker='^')
 plt.scatter(buyx, buyy,c='green', label='buy', marker='^')
 plt.legend()

@@ -8,16 +8,17 @@ sns.set()
 
 initial = pd.read_csv('https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&interval=1min&symbol=msft&apikey=OUMVBY0VK0HS8I9E&datatype=csv&outputsize=full', index_col='timestamp', parse_dates=True)
 initial = initial[::-1]
-#initial = initial[initial.index >= '2020-07-02 09:30:00']
+initial = initial[initial.index >= '2020-07-16 13:20:00']
 
-bbands = ta.bbands(initial['close'], length=50, std=2) #calculating indicators
-rsi = ta.rsi(initial['close'], )
+bbands = ta.bbands(initial['close'], length=200, std=2) #calculating indicators
+rsi = ta.rsi(initial['close'], length=20)
 ema_50 = ta.ema(initial['close'], length=5)
 ema_200 = ta.ema(initial['close'], length=20)
-macd = ta.macd(initial['close'], 12, 26, 9)
+ema_500 = ta.ema(initial['close'], length=50)
+macd = ta.macd(initial['close'], 5, 35, 5)
 vwap = ta.vwap(initial['high'], initial['low'], initial['close'], initial['volume'])
-initial = pd.concat([initial, bbands, ema_50, ema_200, macd, vwap], axis=1)
-initial.columns =['open', 'high', 'low', 'close', 'volume', 'bband1', 'useless', 'bband2', 'ema1', 'ema2', 'macd', 'macdh', 'macds', 'vwap']
+initial = pd.concat([initial, bbands, ema_50, ema_200, ema_500, macd, vwap], axis=1)
+initial.columns =['open', 'high', 'low', 'close', 'volume', 'bband1', 'useless', 'bband2', 'ema1', 'ema2', 'ema3', 'macd', 'macdh', 'macds', 'vwap']
 
 initialInvestment = 1000
 numTrades = 0
@@ -27,20 +28,17 @@ sellx = []
 selly = []
 b = backtester.Backtester(initialInvestment)
 for i in range(50,len(initial.index)-1):
-    one = int(initial['ema1'][i] >= initial['ema2'][i]) #hma, hull moving average
+    one = int(initial['ema1'][i] >= initial['ema2'][i] and initial['ema2'][i] > initial['ema3'][i]) #hma, hull moving average
     two = int(initial['macd'][i] >= initial['macds'][i] and initial['macdh'][i] >= 0) # macd
     three = int(initial['bband1'][i] - initial['open'][i] <= 0.01 or initial['open'][i] <= initial['bband1'][i]) #bollinger bands
     four = int(initial['open'][i] <= initial['vwap'][i]) #vwap
     total = one + two + three + four
 
-    newOne = int(initial['ema1'][i] < initial['ema2'][i])
+    newOne = int(initial['ema1'][i] < initial['ema2'][i] and initial['ema2'][i] < initial['ema3'][i])
     newTwo = int(initial['macd'][i] < initial['macds'][i] and initial['macdh'][i] < 0)
     newThree = int(initial['open'][i] - initial['bband2'][i] <= 0.01 or initial['open'][i] >= initial['bband2'][i])
     newFour = int(initial['open'][i] > initial['vwap'][i]) #vwap
     newTotal = newOne + newTwo + newThree + newFour
-    print(initial.tail())
-
-    
 
     if (total >= 3): #buy
         if b.buy(math.floor(initialInvestment/initial['open'][i]), float(initial['open'][i]), initial.index[i]):
