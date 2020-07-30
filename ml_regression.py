@@ -4,7 +4,6 @@ import numpy as np
 import pandas_ta as ta
 import backtester, math
 import seaborn as sns
-from scipy.signal import find_peaks, find_peaks_cwt
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, confusion_matrix
 import pickle
@@ -27,10 +26,12 @@ initial.columns =['open', 'high', 'low', 'close', 'bband1', 'useless', 'bband2',
 initialInvestment = 1000
 b = backtester.Backtester(initialInvestment)
 initial = initial.dropna()
-X = initial.drop('close', axis=1)
-y = initial['close']
+X = initial[:-1]
+y = initial['close'].shift(-1)
 
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, shuffle = False, stratify = None)
+X = X.dropna()
+y = y.dropna()
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1, shuffle = False, stratify = None)
 from sklearn.ensemble import RandomForestRegressor
 rfc = RandomForestRegressor(n_estimators=100)
 rfc.fit(X_train, y_train)
@@ -39,16 +40,16 @@ buyx = []
 buyy = []
 sellx = []
 selly = []
-predictions = [y_test.iloc[-1]]
+predictions = [y_test.iloc[0]]
 for i in range(len(X_test)):
     pred = rfc.predict([X_test.iloc[i]])
     
-    if pred[0] > float(predictions[-1]):
+    if pred[0] > X_test['close'].iloc[i]:
         if b.buy(math.floor(initialInvestment/y_test.iloc[i]), y_test.iloc[i], y_test.index[i]):
             buyx.append(y_test.index[i])
             buyy.append(y_test.iloc[i])
 
-    elif pred[0] < float(predictions[-1]):
+    elif pred[0] < X_test['close'].iloc[i]:
         if b.sell(b.get_current_buys(), y_test.iloc[i], y_test.index[i]):
             sellx.append(y_test.index[i])
             selly.append(y_test.iloc[i])

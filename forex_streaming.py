@@ -104,8 +104,8 @@ def get_decisions(close_column, distance):
 # X = initial.drop(['decisions'], axis=1)
 # y = initial['decisions']
 # X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.5, shuffle = False, stratify = None)
-from sklearn.ensemble import RandomForestClassifier
-rfc = RandomForestClassifier(n_estimators=100)
+from sklearn.ensemble import RandomForestRegressor
+rfc = RandomForestRegressor(n_estimators=100)
 X_test = pd.DataFrame()
 # rfc.fit(X_train, y_train) #TRAIN
 
@@ -128,10 +128,10 @@ for i in range(10000):
     new_dict['low'] = float(low)
     new_dict['close'] = float(close)
     X_test = X_test.append(new_dict, ignore_index=True)
-    if i < 35:
+    if i < 51:
         print(X_test.tail())
 
-    if i >= 35:
+    if i >= 51:
         bbands_close = ta.bbands(X_test['close'], length=50, std=2) #calculating indicators
         macd_close = ta.macd(X_test['close'], 5, 35, 5)
         rsi_close = np.array(ta.rsi(X_test['close'], 14))[-1]
@@ -154,20 +154,19 @@ for i in range(10000):
         indic_dict['ema3'] = ema_50_close
         indicators = indicators.append(indic_dict, ignore_index=True)
         pred = rfc.predict([indicators.iloc[-1]]) #PREDICT
-        bs = rfc.predict_proba([indicators.iloc[-1]])
-        print(indicators.tail(), pred, bs)
+        print(indicators.tail(), pred[0])
 
-        if (pred == 0 and i > 5): #buy
+        if (pred[0] > X_test['close'].iloc[i] and i > 5): #buy
             if b.buy(5, float(close), 5):
                 buy()
-        elif (pred == 1 and i > 5): #sell
+        elif (pred[0] < X_test['close'].iloc[i] and i > 5): #sell
             if b.sell(5, float(close), 5):
                 sell()
 
 
-    if i < 35:
-        time.sleep(150)
+    if i < 51:
+        time.sleep(30)
     else:
-        time.sleep(300)
+        time.sleep(60)
 
 
