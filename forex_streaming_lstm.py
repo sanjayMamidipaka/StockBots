@@ -16,7 +16,7 @@ def buy():
     hed = {'Authorization': 'Bearer ' + auth_token,
             "Content-Type": "application/json"}
     data = {"order": {
-        "units": "1420",
+        "units": "1400",
         "instrument": "AUD_USD",
         "timeInForce": "FOK",
         "type": "MARKET",
@@ -31,7 +31,7 @@ def sell():
     hed = {'Authorization': 'Bearer ' + auth_token,
             "Content-Type": "application/json"}
     data = {"order": {
-        "units": "-1420",
+        "units": "-1400",
         "instrument": "AUD_USD",
         "timeInForce": "FOK",
         "type": "MARKET",
@@ -42,7 +42,7 @@ def sell():
 
 def get_close():
     try:
-        url = 'https://api-fxpractice.oanda.com/v3/accounts/101-001-15560575-001/instruments/AUD_USD/candles?price=M&granularity=M1&count=1'
+        url = 'https://api-fxpractice.oanda.com/v3/accounts/101-001-15560575-001/instruments/AUD_USD/candles?price=M&granularity=S5&count=1'
         auth_token = '6851735fed54c0315497c6a103297127-f7f82230f0c38eb85f95bdbb816dfc85'
         hed = {'Authorization': 'Bearer ' + auth_token,
                 "Content-Type": "application/json"}
@@ -67,6 +67,7 @@ initial.drop(['timestamp', 'open', 'high', 'low'], axis=1, inplace=True)
 b = backtester.Backtester(1000)
 model = 1
 buy_price = 0.0
+predictions = [1.0]
 with open('forex_lstm.pkl', 'rb') as file:
     model = pickle.load(file)
 
@@ -80,10 +81,10 @@ for i in range(10000):
     close = get_close()
     new_dict['close'] = float(close)
     initial = initial.append(new_dict, ignore_index=True)
-    if i < 51:
+    if i < 30:
         print(initial.tail())
 
-    if i >= 51:
+    if i >= 30:
         last_60_days = initial[-60:].values
         last_60_days_scaled = scaler.transform(last_60_days)
         
@@ -93,16 +94,20 @@ for i in range(10000):
         X_test = np.reshape(X_test, (X_test.shape[0], X_test.shape[1], 1))
         pred_price = model.predict(X_test)
         pred_price = scaler.inverse_transform(pred_price)
+        predictions.append(float(pred_price))
         print(initial.tail(), pred_price)
+        print('buy', float(pred_price) > float(close))
+        print('tp', (float(close) - buy_price)*1400 > 0.25 and pred_price < float(close))
+        print('sl', (float(close) - buy_price)*1400 < 0.10)
 
-        if (pred_price > close): #buy
+        if (predictions[-1] > predictions[-2]): #buy
             if b.buy(5, float(close), 5):
                 buy_price = float(close)
                 buy()
-        elif (close - buy_price >= 0.001): #sell
+        if ((float(close) - buy_price)*1400 > 1.0 and pred_price < float(close)): #sell
             if b.sell(5, float(close), 5):
                 sell()
-        if (close - buy_price <= -0.0005): #sell
+        elif ((buy_price - float(close))*1400 >= 1.0): #sell
             if b.sell(5, float(close), 5):
                 sell()
 

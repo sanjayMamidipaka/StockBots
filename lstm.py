@@ -24,9 +24,9 @@ train_data = scaled_data[0:training_data_len, : ]
 x_train = []
 y_train = []
 
-for i in range(60, len(train_data)):
+for i in range(60, len(train_data)-5):
     x_train.append(train_data[i-60:i, 0])
-    y_train.append(train_data[i, 0])
+    y_train.append(train_data[i+5, 0])
 
 
 #Convert to x_train and y_train numpy arrays
@@ -46,7 +46,7 @@ model.add(Dense(1))
 model.compile(optimizer='adam', loss='mean_squared_error')
 
 #Train the model
-model.fit(x_train, y_train, batch_size=1, epochs=2)
+model.fit(x_train, y_train, batch_size=1, epochs=3)
 
 #Testing
 test_data = scaled_data[training_data_len - 60: , :]

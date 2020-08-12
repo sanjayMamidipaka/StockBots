@@ -33,48 +33,52 @@ def on_open(ws):
 def on_message(ws, message):
     global initial
     global i
-    i += 1
-    checked = False
-    new_dict = {}
-    info_dict = json.loads(message)
-    info_dict = info_dict['data']
-    close_price = 0.0
-    for key, value in info_dict.items():
-        if key == 'c':
-            new_dict['close'] = float(value)
-            checked = True
-            close_price = float(value)
+    global buy_price
+    try:
+        i += 1
+        checked = False
+        new_dict = {}
+        info_dict = json.loads(message)
+        info_dict = info_dict['data']
+        close_price = 0.0
+        for key, value in info_dict.items():
+            if key == 'c':
+                new_dict['close'] = float(value)
+                checked = True
+                close_price = float(value)
 
-    if checked:
-        initial = initial.append(new_dict, ignore_index=True)
-        if i <= 55:
-            print(initial.tail())
+        if checked:
+            initial = initial.append(new_dict, ignore_index=True)
+            if i <= 55:
+                print(initial.tail())
 
-    if i > 55:
-        last_60_days = initial[-60:].values
-        last_60_days_scaled = scaler.transform(last_60_days)
-        
-        X_test = []
-        X_test.append(last_60_days_scaled)
-        X_test = np.array(X_test)
-        X_test = np.reshape(X_test, (X_test.shape[0], X_test.shape[1], 1))
-        pred_price = model.predict(X_test)
-        pred_price = scaler.inverse_transform(pred_price)
-        print(initial.tail(), pred_price)
+        if i > 55:
+            last_60_days = initial[-60:].values
+            last_60_days_scaled = scaler.transform(last_60_days)
+            
+            X_test = []
+            X_test.append(last_60_days_scaled)
+            X_test = np.array(X_test)
+            X_test = np.reshape(X_test, (X_test.shape[0], X_test.shape[1], 1))
+            pred_price = model.predict(X_test)
+            pred_price = scaler.inverse_transform(pred_price)
+            predictions.append(float(pred_price))
+            print(initial.tail(), pred_price)
 
-        if (pred_price > close_price): #buy
-            if b.buy(5, float(close_price), 5):
-                create_order('MSFT', 5, 'buy', 'market', 'gtc')
-                buy_price = close_price
+            if (predictions[-1] > predictions[-2]): #buy
+                if b.buy(5, float(close_price), 5):
+                    create_order('MSFT', 5, 'buy', 'market', 'gtc')
+                    buy_price = float(close_price)
 
-        elif (close_price - buy_price >= 0.45): #sell
-            if b.sell(5, float(close_price), 5):
-                create_order('MSFT', 5, 'sell', 'market', 'day')
+            if ((float(close_price) - buy_price)*5 > 1.0 and pred_price < float(close_price)): #sell
+                if b.sell(5, float(close_price), 5):
+                    create_order('MSFT', 5, 'sell', 'market', 'day')
 
-        if (close - buy_price <= -0.30): #sell
-            if b.sell(5, float(close_price), 5):
-                create_order('MSFT', 5, 'sell', 'market', 'day')
-
+            elif ((buy_price - float(close_price))*5 >= 1.0): #sell
+                if b.sell(5, float(close_price), 5):
+                    create_order('MSFT', 5, 'sell', 'market', 'day')
+    except Exception as e:
+        print(e)
 
 socket = 'wss://data.alpaca.markets/stream'
 API_KEY= 'PKOT8ZWPLGJ94Q705388'
@@ -84,6 +88,7 @@ APCA_API_BASE_URL = 'https://paper-api.alpaca.markets'
 api = tradeapi.REST(API_KEY, SECRET_KEY, APCA_API_BASE_URL, api_version='v2')
 account = api.get_account()
 
+predictions = []
 i = 0
 buy_price = 0.0
 b = backtester.Backtester(12000)

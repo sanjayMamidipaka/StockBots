@@ -39,13 +39,17 @@ for i in range(len(initial)-60):
         if b.buy(math.floor(initialInvestment/initial['close'].iloc[i]), initial['close'].iloc[i], initial['close'].index[i]):
             buy_price = initial['close'].iloc[i]
 
-    elif initial['close'].iloc[i] - buy_price >= 0.45:
+    if initial['close'].iloc[i] > pred_price:
         if b.sell(b.get_current_buys(), initial['close'].iloc[i], initial['close'].index[i]):
             pass
+    
+    # if initial['close'].iloc[i] - buy_price >= 0.001:
+    #     if b.sell(b.get_current_buys(), initial['close'].iloc[i], initial['close'].index[i]):
+    #         pass
 
-    if (initial['close'].iloc[i] - buy_price <= -0.20): #sell
-        if b.sell(b.get_current_buys(), initial['close'].iloc[i], initial['close'].index[i]):
-            pass
+    # elif (initial['close'].iloc[i] - buy_price <= -0.0005): #sell
+    #     if b.sell(b.get_current_buys(), initial['close'].iloc[i], initial['close'].index[i]):
+    #         pass
 
 i = len(initial['close'].index)-1
 if b.sell(b.get_current_buys(), initial['close'].iloc[i], i): #sell everything once the day is done
